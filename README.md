@@ -38,6 +38,8 @@ O passo a passo completo, do ponto de vista de quem está julgando, está em [do
 - LED verde, LED vermelho e um buzzer
 - Uma chave liga/desliga (modo treino) e um botão (reset da rede e da senha)
 
+![Ligações do cronômetro](hardware/ligacoes.svg)
+
 As ligações, os pinos e os cuidados com os sensores estão em [hardware/montagem.md](hardware/montagem.md).
 
 ## Como gravar no ESP32

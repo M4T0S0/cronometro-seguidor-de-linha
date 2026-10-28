@@ -1,5 +1,7 @@
 # Montagem
 
+![Ligações do cronômetro](ligacoes.svg)
+
 Todos os pinos ficam em `firmware/cronometro/config.h`. Se precisar trocar algum, é só mudar lá e gravar de novo.
 
 ## Pinos
