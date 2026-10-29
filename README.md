@@ -1,5 +1,7 @@
 # Cronômetro para corrida de seguidor de linha
 
+[![Verificar](https://github.com/M4T0S0/cronometro-seguidor-de-linha/actions/workflows/verificar.yml/badge.svg)](https://github.com/M4T0S0/cronometro-seguidor-de-linha/actions/workflows/verificar.yml)
+
 Este é o cronômetro que eu construí para as provas de robô seguidor de linha. Ele roda inteiro num ESP32: dois sensores marcam a largada e a chegada, um display mostra o tempo, e o juiz controla tudo pelo celular, numa página que o próprio cronômetro serve. Não precisa de computador, de internet nem de instalar aplicativo.
 
 Ele já foi usado em competição de verdade, e boa parte do que está aqui nasceu de problemas que eu vi acontecer na pista.
@@ -64,6 +66,8 @@ As funções da página do juiz (busca, leitura de planilha, ranking, formato do
 ```bash
 node --test
 ```
+
+A cada envio para o GitHub, esses testes rodam sozinhos, junto com a compilação do firmware nas mesmas versões de placa e bibliotecas que eu uso (`.github/workflows/verificar.yml`). O selo no topo desta página mostra se a última versão passou.
 
 ## Organização das pastas
 
