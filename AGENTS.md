@@ -6,7 +6,7 @@ Cronômetro para corrida de robô seguidor de linha, rodando inteiro num ESP32: 
 
 ## Build e ferramentas
 
-- Não há build por linha de comando. Há testes automáticos da página do juiz (`testes/`, Node puro, sem dependências): rode `node --test` na raiz depois de mexer no `index.html`. O firmware C++ ainda não tem testes. O firmware é compilado e gravado pelo **Arduino IDE**: abrir `firmware/cronometro/cronometro.ino`, placa **ESP32 Dev Module**, partição padrão.
+- Não há build por linha de comando. Há testes automáticos da página do juiz (`testes/`, Node puro, sem dependências): rode `node --test` na raiz depois de mexer no `index.html`. A lógica do firmware tem testes em `testes/firmware/` (`sh testes/firmware/rodar.sh`, precisa de g++; no Windows, pelo WSL): compilam os .cpp verdadeiros de data_store, storage, ranking, race_control etc. com peças falsas de Arduino/LittleFS/Preferences/esp_timer em `testes/firmware/falsos/`. Ao mexer nesses módulos, acrescente um teste; se usar algo novo da placa, acrescente nas peças falsas. O firmware é compilado e gravado pelo **Arduino IDE**: abrir `firmware/cronometro/cronometro.ino`, placa **ESP32 Dev Module**, partição padrão.
 - Core **esp32 da Espressif 2.0.14 exatamente** — o WPA2-Enterprise (eduroam) depende de APIs que mudaram no 3.x. Bibliotecas: Adafruit SSD1306, Adafruit GFX, ArduinoJson **v7**.
 - A página do juiz é editada em `firmware/cronometro/pagina/index.html` e embutida no firmware compactada em `web_page_gz.h` (gerado, nunca editar à mão). Depois de qualquer mudança no HTML:
   ```bash

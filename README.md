@@ -67,6 +67,12 @@ As funções da página do juiz (busca, leitura de planilha, ranking, formato do
 node --test
 ```
 
+A lógica do firmware (contagem de tomadas, ranking, gravação das corridas, importação, exclusão) também tem testes que rodam no computador. Eles compilam o código verdadeiro do cronômetro trocando só a memória e o relógio da placa por versões de teste. Precisa do `g++` (Linux ou WSL no Windows):
+
+```bash
+sh testes/firmware/rodar.sh
+```
+
 A cada envio para o GitHub, esses testes rodam sozinhos, junto com a compilação do firmware nas mesmas versões de placa e bibliotecas que eu uso (`.github/workflows/verificar.yml`). O selo no topo desta página mostra se a última versão passou.
 
 ## Organização das pastas
