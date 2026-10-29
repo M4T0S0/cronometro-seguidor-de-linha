@@ -31,22 +31,26 @@ Em **Configurações** (a engrenagem no topo) → **Senha do juiz**, crie uma se
 Na tela da competição:
 
 1. **Escolher robô:** a lista mostra cada robô com a tomada que ele vai fazer agora. Quem já fez todas as tomadas do dia fica separado embaixo.
-2. **Pronto para liberar:** confira se é o robô certo. Se não for, toque em **Trocar robô**. Quando o robô estiver posicionado, toque em **Liberar corrida**.
+2. **Pronto para liberar:** confira se é o robô certo. Se não for, toque em **Trocar robô**. Quando o robô estiver posicionado, toque em **Liberar corrida**. Se o robô não aparecer para largar, toque em **Não compareceu**: a tomada conta como não completou e o cronômetro já seleciona a próxima tomada dele (toque de novo se ele continuar ausente, ou **Trocar robô**).
 3. **Aguardando largada:** o tempo começa sozinho quando o robô passa pelo sensor de largada.
 4. **Corrida em andamento:** o tempo aparece correndo no celular e no display. Se precisar parar, use **Repetir tomada** (a tomada não conta) ou **Abortar** (fica registrada como não completou).
-5. **Validar resultado:** quando o robô passa pelo sensor de chegada, o tempo aparece grande. Toque em **Válida**, **Inválida** ou **Repetir tomada**.
+5. **Validar resultado:** quando o robô passa pelo sensor de chegada, o tempo aparece grande. Toque em **Válida** ou **Inválida**. **Repetir tomada** fica separado, embaixo, e pede confirmação, porque descarta o tempo medido.
 
-Errou o toque? Em **Corridas recentes**, toque na corrida e escolha o resultado certo.
+Depois de validar, aparece por alguns segundos uma faixa com o robô, o tempo e o resultado registrado. Errou o toque? Toque em **Corrigir** nessa faixa, ou depois em **Corridas recentes**, e escolha o resultado certo.
+
+No Android, o celular vibra quando sai um resultado para validar. Se o celular sair da rede do cronômetro, aparece uma faixa vermelha no topo avisando; ela some sozinha quando a conexão volta.
+
+Sob sol ou luz forte, toque no ícone de sol no topo para trocar para o **modo sol**, com a tela clara. Cada aparelho guarda a sua escolha.
 
 ### Painel para o público
 
-O botão **Painel** abre o ranking numa tela própria, com letras grandes e a última corrida em destaque. Abra num notebook ligado a uma TV ou projetor, conectado à rede do cronômetro.
+O botão **Painel (TV)** abre o ranking numa tela própria, com letras grandes e a última corrida em destaque. Abra num notebook ligado a uma TV ou projetor, conectado à rede do cronômetro, e toque em **Tela cheia** no canto.
 
 ## No fim do dia
 
 Quando todos os robôs fizerem suas tomadas, aparece o botão para começar o próximo dia. No último dia, o botão encerra a competição. O ranking final fica em **Histórico**.
 
-Para guardar uma cópia de tudo no computador, use **Configurações** → **Backup**.
+Para divulgar o resultado, use **Baixar planilha do ranking**, embaixo do ranking: o arquivo abre direto no Excel. Para guardar uma cópia de tudo no computador, use **Configurações** → **Backup**.
 
 ## Modo treino
 

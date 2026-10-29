@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <!--
   Página do juiz (HTML/CSS/JS puro, sem build). Servida pelo ESP32 compactada:
-  depois de editar este arquivo, rode firmware/tools/gerar_pagina.py (ou gerar_pagina.bat)
+  depois de editar este arquivo, rode ferramentas/gerar_pagina.py (ou gerar_pagina.bat)
   para regenerar web_page_gz.h, e só então compile/carregue no Arduino IDE.
   Funciona só com o Access Point do cronômetro: nada de CDN/fonte externa.
 -->
@@ -11,19 +11,39 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>RaceTrack UTFPR</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffc700' stroke-width='2.4' stroke-linecap='round'%3E%3Ccircle cx='12' cy='14' r='8'/%3E%3Cpath d='M12 14v-4M10 2h4M12 2v4'/%3E%3C/svg%3E">
+<script>try { if (localStorage.getItem('tema') === 'sol') document.documentElement.dataset.theme = 'sol'; } catch (e) {}</script>
 <style>
 :root {
   --bg:#07080c; --bg-elev:#0c0f16; --panel:#12151f; --panel-hover:#171b28;
   --border:#1f2431; --border-strong:#2d3446;
   --text:#f2f4f9; --text-dim:#99a2b8; --text-faint:#808aa0;
-  --primary:#ffc700; --primary-strong:#e6b400; --primary-soft:rgba(255,199,0,.15);
-  --success:#34d399; --success-soft:rgba(52,211,153,.14);
-  --danger:#ff5c7a; --danger-soft:rgba(255,92,122,.14);
+  --primary:#ffc700; --primary-strong:#e6b400; --primary-soft:rgba(255,199,0,.15); --primary-line:rgba(255,199,0,.45); --on-primary:#111; --primary-ink:var(--primary);
+  --success:#34d399; --success-soft:rgba(52,211,153,.14); --on-success:#06281a;
+  --danger:#ff5c7a; --danger-soft:rgba(255,92,122,.14); --danger-line:rgba(255,92,122,.45); --on-danger:#2a0610;
   --warning:#ffb545; --warning-soft:rgba(255,181,69,.14);
   --gold:#ffd166; --silver:#ccd6e6; --bronze:#e2a97a;
   --radius:18px; --radius-sm:12px;
   --shadow:0 14px 34px -16px rgba(0,0,0,.7);
   --shadow-sm:0 8px 18px -10px rgba(0,0,0,.55);
+  --topbar-bg:rgba(7,8,12,.72);
+  color-scheme:dark;
+}
+/* Modo Sol: claro e de alto contraste para luz forte (ginásio, sol, projetor
+   em sala clara). Mesmos papéis; as cores de destaque ficam mais escuras
+   onde viram texto, porque amarelo/verde claros somem no branco. */
+:root[data-theme="sol"] {
+  --bg:#f3f4f6; --bg-elev:#ffffff; --panel:#ffffff; --panel-hover:#eceef2;
+  --border:#d5d9e1; --border-strong:#aeb5c2;
+  --text:#0c1018; --text-dim:#3b4352; --text-faint:#545d6d;
+  --primary-soft:rgba(255,199,0,.24); --primary-line:rgba(138,98,0,.55); --primary-ink:#7a5500;
+  --success:#0a7148; --success-soft:rgba(10,113,72,.12); --on-success:#fff;
+  --danger:#b3193a; --danger-soft:rgba(179,25,58,.10); --danger-line:rgba(179,25,58,.5); --on-danger:#fff;
+  --warning:#8a4b00; --warning-soft:rgba(138,75,0,.12);
+  --gold:#8a6200; --silver:#4f5968; --bronze:#8f4f1f;
+  --shadow:0 10px 26px -14px rgba(16,24,40,.28);
+  --shadow-sm:0 6px 14px -10px rgba(16,24,40,.3);
+  --topbar-bg:rgba(255,255,255,.85);
+  color-scheme:light;
 }
 * { box-sizing: border-box; }
 html { -webkit-tap-highlight-color: transparent; }
@@ -32,19 +52,16 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, "Helvetica Neue", Arial, sans-serif;
   -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
   letter-spacing:-.005em;
-  background:
-    radial-gradient(1100px 560px at 12% -12%, rgba(109,139,255,.11), transparent 60%),
-    radial-gradient(900px 480px at 100% 0%, rgba(52,211,153,.05), transparent 55%),
-    var(--bg);
+  background:var(--bg);
   color:var(--text);
 }
-a { color:var(--primary); text-decoration:none; }
+a { color:var(--primary-ink); text-decoration:none; }
 a:hover { text-decoration:underline; }
 
 .topbar {
   position:sticky; top:0; z-index:10;
   display:flex; align-items:center; gap:10px;
-  padding:16px 20px; background:rgba(7,8,12,.72); backdrop-filter:blur(14px) saturate(160%);
+  padding:16px 20px; background:var(--topbar-bg); backdrop-filter:blur(14px) saturate(160%);
   border-bottom:1px solid var(--border);
 }
 .topbar .logo { font-size:1.5rem; line-height:1; }
@@ -61,19 +78,19 @@ a:hover { text-decoration:underline; }
 }
 .tab-btn {
   flex:1; border:none; background:transparent; color:var(--text-dim);
-  border-radius:999px; padding:11px 14px; font-size:.85rem; font-weight:700; cursor:pointer;
+  border-radius:999px; min-height:44px; padding:11px 14px; font-size:.85rem; font-weight:700; cursor:pointer;
   transition:background .15s, color .15s;
 }
 .tab-btn:hover { color:var(--text); }
 /* Cabeçalho da tela da competição */
 .detail-title { margin:0 0 8px; }
-.day-pill { display:inline-block; font-size:.78rem; font-weight:700; padding:5px 12px; border-radius:999px; background:var(--primary-soft); color:var(--primary); }
+.day-pill { display:inline-block; font-size:.78rem; font-weight:700; padding:5px 12px; border-radius:999px; background:var(--primary-soft); color:var(--primary-ink); }
 .detail-actions { display:flex; flex-wrap:wrap; gap:8px; margin:14px 0 18px; }
 .detail-actions .btn-ghost { width:auto; margin-top:0; padding:10px 14px; font-size:.86rem; display:inline-flex; align-items:center; }
 .detail-actions .btn-ghost:hover { text-decoration:none; }
 .topbar-config { margin-left:auto; color:var(--text-dim); display:flex; align-items:center; justify-content:center; width:44px; height:44px; border-radius:12px; }
-.topbar-config:hover { color:var(--primary); }
-.tab-btn.tab-active { background:linear-gradient(180deg, var(--primary), var(--primary-strong)); color:#111; box-shadow:0 6px 18px -8px rgba(230,180,0,.5); }
+.topbar-config:hover { color:var(--primary-ink); }
+.tab-btn.tab-active { background:var(--primary); color:var(--on-primary); }
 
 main#app { flex:1; width:100%; max-width:720px; margin:0 auto; padding:24px 16px 36px; }
 
@@ -85,9 +102,7 @@ footer.app-footer .sep { margin:0 8px; opacity:.5; }
 footer.app-footer strong { color:var(--text-dim); font-weight:600; }
 
 h1 {
-  font-size:1.6rem; font-weight:800; margin:2px 0 20px; letter-spacing:-.02em;
-  background:linear-gradient(180deg, var(--text), var(--text-dim));
-  -webkit-background-clip:text; background-clip:text; color:transparent;
+  font-size:1.6rem; font-weight:800; margin:2px 0 20px; letter-spacing:-.02em; color:var(--text);
 }
 h2 { font-size:.76rem; margin:0 0 16px; color:var(--text-dim); text-transform:uppercase; letter-spacing:.07em; font-weight:800; display:flex; align-items:center; gap:8px; }
 .muted { color:var(--text-dim); }
@@ -112,40 +127,82 @@ h2 { font-size:.76rem; margin:0 0 16px; color:var(--text-dim); text-transform:up
   color:var(--text); font-weight:600; box-shadow:var(--shadow-sm);
   transition:border-color .15s, transform .15s, box-shadow .15s;
 }
-.tile:hover { text-decoration:none; border-color:var(--border-strong); transform:translateY(-2px); box-shadow:var(--shadow); }
+@media (hover:hover) { .tile:hover { text-decoration:none; border-color:var(--border-strong); transform:translateY(-2px); box-shadow:var(--shadow); } }
 .tile .tile-icon {
   width:44px; height:44px; border-radius:13px; display:flex; align-items:center; justify-content:center;
-  background:var(--bg); color:var(--primary); font-size:1.3rem; flex-shrink:0;
+  background:var(--bg); color:var(--primary-ink); font-size:1.3rem; flex-shrink:0;
   border:1px solid var(--border-strong);
 }
-.tile:hover .tile-icon { background:var(--primary); color:#111; }
+@media (hover:hover) { .tile:hover .tile-icon { background:var(--primary); color:var(--on-primary); } }
 .tile .tile-sub { display:block; font-weight:400; font-size:.8rem; color:var(--text-dim); margin-top:2px; overflow-wrap:anywhere; }
 .tile.setting { width:100%; padding:16px; text-align:left; font:inherit; font-weight:600; cursor:pointer; }
 .tile .tile-text { flex:1; min-width:0; }
 .tile-chev { color:var(--text-dim); flex-shrink:0; }
 div.tile.setting { cursor:default; }
 div.tile.setting:hover { transform:none; border-color:var(--border); box-shadow:var(--shadow-sm); }
-div.tile.setting:hover .tile-icon { background:var(--bg); color:var(--primary); }
+div.tile.setting:hover .tile-icon { background:var(--bg); color:var(--primary-ink); }
+.sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
 .sheet-error { margin:0 0 12px; padding:10px 12px; border-radius:var(--radius-sm); background:var(--danger-soft); color:var(--danger); font-size:.9rem; }
 
-.btn-primary, .btn-danger, .btn-ghost {
+.btn-primary, .btn-valid, .btn-danger, .btn-ghost {
   border:none; border-radius:999px; padding:15px 22px; font-size:.98rem; font-weight:700;
   letter-spacing:-.005em; cursor:pointer; width:100%; margin-top:10px;
   transition:filter .15s, transform .05s, box-shadow .15s;
 }
-.btn-primary, .btn-danger { color:#fff; }
-.btn-primary { background:linear-gradient(180deg, var(--primary), var(--primary-strong)); color:#111; box-shadow:0 10px 26px -10px rgba(230,180,0,.5); }
-.btn-danger { background:linear-gradient(180deg, #ff7d95, var(--danger)); color:#2a0610; box-shadow:0 10px 26px -10px rgba(255,92,122,.6); }
+.btn-primary { background:var(--primary); color:var(--on-primary); box-shadow:var(--shadow-sm); }
+.btn-danger { background:var(--danger); color:var(--on-danger); box-shadow:var(--shadow-sm); }
+.btn-valid { background:var(--success); color:var(--on-success); box-shadow:var(--shadow-sm); }
+/* Validar: os dois vereditos lado a lado e altos. Ações que descartam a
+   tomada (Repetir, Abortar) ficam longe, atrás de um divisor e afastadas
+   entre si, para não serem tocadas no lugar de outra coisa. */
+.verdict-row { margin-top:4px; }
+.verdict-row > button { min-height:64px; font-size:1.1rem; margin-top:0; }
+.phase-alt { margin-top:22px; padding-top:14px; border-top:1px solid var(--border); display:flex; flex-wrap:wrap; justify-content:center; gap:12px 28px; }
+.phase-alt .btn-ghost { width:auto; margin-top:0; min-height:44px; padding:10px 20px; font-size:.9rem; }
+
+/* Fases da corrida: cada uma com a sua cara, para ler o estado de relance,
+   sem precisar ler o título. Pronto = neutro (o botão amarelo é a ação);
+   liberado = amarelo; correndo = verde; validar = tempo parado, emoldurado. */
+.panel.phase { border-width:2px; }
+.panel.phase::before { display:none; }
+.phase-title { font-size:1.2rem; text-transform:none; letter-spacing:-.01em; color:var(--text); margin-bottom:10px; }
+.phase .phase-who { font-size:1rem; margin-bottom:6px; }
+.phase .phase-who strong { display:block; font-size:1.55rem; line-height:1.15; letter-spacing:-.015em; overflow-wrap:anywhere; }
+.phase .live-dot { width:10px; height:10px; background:currentColor; box-shadow:none; }
+.phase[data-phase="locked"] { border-color:var(--border-strong); }
+.phase[data-phase="waiting_start"] { border-color:var(--primary-line); background:linear-gradient(var(--primary-soft), var(--primary-soft)), var(--panel); }
+.phase[data-phase="waiting_start"] .phase-title { color:var(--primary-ink); }
+.phase[data-phase="running"] { border-color:var(--success); background:linear-gradient(var(--success-soft), var(--success-soft)), var(--panel); }
+.phase[data-phase="running"] .phase-title, .phase[data-phase="running"] .time-display { color:var(--success); }
+.phase[data-phase="running"] .time-display { font-size:clamp(2.6rem, 13vw, 4.4rem); }
+.phase[data-phase="validate"] { border-color:var(--text-dim); }
+.time-stopped { border:2px solid var(--border-strong); border-radius:var(--radius-sm); padding:6px 10px; background:var(--bg-elev); }
+/* Confirmação do veredito recém-dado */
+.verdict-bar { display:flex; align-items:center; gap:10px; margin-bottom:12px; padding:10px 10px 10px 14px; border-radius:var(--radius-sm); border:1px solid; font-size:.95rem; }
+.verdict-bar.is-valid { background:var(--success-soft); border-color:var(--success); color:var(--success); }
+.verdict-bar.is-invalid { background:var(--danger-soft); border-color:var(--danger-line); color:var(--danger); }
+.verdict-icon { flex-shrink:0; }
+.verdict-text { flex:1; min-width:0; color:var(--text); overflow-wrap:anywhere; }
+.verdict-time { font-variant-numeric:tabular-nums; font-weight:700; }
+.verdict-fix { flex-shrink:0; min-height:44px; padding:0 14px; border-radius:999px; border:1px solid currentColor; background:none; color:inherit; font:inherit; font-weight:700; cursor:pointer; }
+/* Alternar modo Sol */
+.theme-toggle { margin-left:auto; width:44px; height:44px; display:flex; align-items:center; justify-content:center; background:none; border:none; border-radius:12px; color:var(--text-dim); cursor:pointer; }
+.theme-toggle:hover { color:var(--primary-ink); }
+.theme-toggle + .topbar-config { margin-left:0; }
+.theme-toggle .ico-moon { display:none; }
+:root[data-theme="sol"] .theme-toggle .ico-sun { display:none; }
+:root[data-theme="sol"] .panel::before { display:none; } /* filete claro some no branco */
+:root[data-theme="sol"] .theme-toggle .ico-moon { display:block; }
 .btn-ghost { background:var(--panel-hover); color:var(--text); border:1px solid var(--border-strong); }
-.btn-primary:hover, .btn-danger:hover, .btn-ghost:hover { filter:brightness(1.1); }
-.btn-primary:active, .btn-danger:active, .btn-ghost:active { transform:scale(.98); }
+.btn-primary:hover, .btn-valid:hover, .btn-danger:hover, .btn-ghost:hover { filter:brightness(1.1); }
+.btn-primary:active, .btn-valid:active, .btn-danger:active, .btn-ghost:active { transform:scale(.98); }
 .btn-primary:disabled, .btn-danger:disabled { opacity:.5; }
 
 /* Feedback visual enquanto uma ação (validar/armar/liberar/etc) está em
    andamento — sem isso, um clique que demora um pouco (rede lenta, ESP32
    ocupado) parece não ter feito nada, e a tentação é clicar de novo (que
    o "busy" em JS silenciosamente ignora, reforçando a impressão de bug). */
-body.busy .btn-primary, body.busy .btn-danger, body.busy .btn-ghost, body.busy .participant-btn {
+body.busy .btn-primary, body.busy .btn-valid, body.busy .btn-danger, body.busy .btn-ghost, body.busy .participant-btn {
   opacity:.5; pointer-events:none;
 }
 
@@ -156,21 +213,19 @@ body.busy .btn-primary, body.busy .btn-danger, body.busy .btn-ghost, body.busy .
   border-radius:999px; padding:8px 16px 8px 8px; cursor:pointer; font-size:.92rem;
   transition:border-color .15s, transform .05s, background .15s;
 }
-.participant-btn:hover { border-color:var(--primary); background:var(--primary-soft); }
+.participant-btn:hover { border-color:var(--primary-ink); background:var(--primary-soft); }
 .participant-btn:active { transform:scale(.97); }
 .avatar {
   width:27px; height:27px; border-radius:50%; flex-shrink:0;
   display:flex; align-items:center; justify-content:center;
-  background:linear-gradient(135deg, rgba(109,139,255,.28), rgba(109,139,255,.08));
-  color:var(--primary); font-size:.7rem; font-weight:800;
-  border:1px solid rgba(109,139,255,.3);
+  background:var(--bg); color:var(--primary-ink); font-size:.7rem; font-weight:800;
+  border:1px solid var(--border-strong);
 }
 .participant-btn .p-meta { color:var(--text-faint); font-size:.8rem; }
 
 .time-display {
-  font-size:3.4rem; font-weight:800; font-variant-numeric:tabular-nums; letter-spacing:-.03em;
+  font-size:clamp(2.4rem, 12vw, 3.4rem); font-weight:800; font-variant-numeric:tabular-nums; letter-spacing:-.03em;
   text-align:center; margin:18px 0; color:var(--text);
-  text-shadow:0 0 46px rgba(109,139,255,.28);
 }
 
 table { width:100%; border-collapse:collapse; }
@@ -198,25 +253,18 @@ tr:last-child td { border-bottom:none; }
 .att-dnf { color:var(--text-dim); }
 .att-pending { color:var(--text-dim); }
 .att-best { font-weight:800; }
-.ranking-table-wrap { overflow-x:auto; }
-.ranking-table-wrap table { width:auto; min-width:100%; }
-.ranking-table-wrap th { text-align:center; padding:8px; color:var(--text-dim); font-size:.72rem; text-transform:uppercase; letter-spacing:.05em; border-bottom:1px solid var(--border-strong); white-space:nowrap; }
-.ranking-table-wrap th:nth-child(2), .ranking-table-wrap td:nth-child(2) { text-align:left; }
-.ranking-table-wrap td { padding:10px 8px; text-align:center; white-space:nowrap; }
-.ranking-table-wrap td:last-child { text-align:center; font-weight:400; }
 .ranking-tv { padding:24px; }
-.ranking-tv h1 { font-size:2rem; margin-bottom:20px; }
-.ranking-tv table { width:100%; font-size:1.3rem; border-collapse:collapse; }
-.ranking-tv th, .ranking-tv td { padding:10px 14px; text-align:center; border-bottom:1px solid rgba(255,255,255,.08); }
+.ranking-tv table { width:100%; border-collapse:collapse; }
+.ranking-tv th, .ranking-tv td { padding:10px 14px; text-align:center; border-bottom:1px solid var(--border); }
 .ranking-tv td:nth-child(2) { text-align:left; }
 .status-pending { background:var(--warning-soft); color:var(--warning); }
 /* Revisão das telas */
 .topbar-home img { background:#fff; padding:4px 7px; border-radius:9px; }
-.btn-ghost.danger-outline { color:var(--danger); border-color:rgba(255,92,122,.45); }
+.btn-ghost.danger-outline { color:var(--danger); border-color:var(--danger-line); }
 .title-row { display:flex; align-items:flex-start; gap:6px; }
 .title-row .detail-title { flex:1; }
 .title-row .icon-btn { margin-top:-6px; }
-.detail-actions .btn-accent { color:var(--primary); border-color:rgba(255,199,0,.45); }
+.detail-actions .btn-accent { color:var(--primary-ink); border-color:var(--primary-line); }
 .phase-who { font-size:1.05rem; margin:0 0 4px; }
 .phase-who small { color:var(--text-dim); font-size:.88rem; }
 .time-display.live { margin:10px 0 6px; }
@@ -225,15 +273,15 @@ tr:last-child td { border-bottom:none; }
 .list-head { display:flex; align-items:center; justify-content:space-between; margin:4px 0 10px; }
 .net-list { display:flex; flex-direction:column; gap:8px; margin-bottom:6px; }
 .net-row { display:flex; align-items:center; gap:10px; width:100%; min-height:54px; padding:8px 14px; border-radius:14px; background:var(--panel-hover); border:1px solid var(--border); color:var(--text); font:inherit; font-weight:600; text-align:left; cursor:pointer; }
-.net-row:hover { border-color:var(--primary); }
+.net-row:hover { border-color:var(--primary-ink); }
 .net-name { flex:1; min-width:0; overflow-wrap:anywhere; }
 .net-name small { display:block; color:var(--text-dim); font-size:.8rem; font-weight:500; }
 .net-sig { color:var(--text-dim); font-size:.82rem; font-weight:500; white-space:nowrap; }
 .pick-list .participant-btn { width:100%; min-height:56px; border-radius:14px; padding:8px 14px 8px 10px; text-align:left; font-size:1rem; font-weight:600; }
 .pick-text { display:flex; flex-direction:column; min-width:0; }
 .pick-text .p-meta { font-weight:500; }
-.tile-hero { border-color:rgba(255,199,0,.45); }
-.tile-hero .tile-icon { background:var(--primary); color:#111; }
+.tile-hero { border-color:var(--primary-line); }
+.tile-hero .tile-icon { background:var(--primary); color:var(--on-primary); }
 /* Ranking no celular: uma linha por robô, tempo grande à direita; tocar mostra as tomadas */
 .rk-row { border-bottom:1px solid var(--border); }
 .rk-row:last-child { border-bottom:none; }
@@ -247,10 +295,26 @@ tr:last-child td { border-bottom:none; }
 .rk-atts { display:flex; flex-wrap:wrap; gap:8px; padding:0 0 14px 42px; }
 .rk-att { display:flex; flex-direction:column; padding:6px 10px; border-radius:10px; background:var(--panel-hover); font-variant-numeric:tabular-nums; font-weight:700; font-size:.92rem; }
 .rk-att small { color:var(--text-dim); font-size:.7rem; font-weight:600; }
+/* Aviso de conexão perdida */
+.offline-bar { position:sticky; top:0; z-index:20; padding:10px 16px; background:var(--danger); color:var(--on-danger); font-weight:700; font-size:.9rem; text-align:center; }
+.offline-bar[hidden] { display:none; }
+.panel-foot { margin-top:12px; text-align:right; }
+.tv-head { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; }
+.tv-head > div { min-width:0; }
+.tv-full { flex-shrink:0; width:auto; margin:0; padding:10px 16px; font-size:.85rem; }
+.ranking-tv th { font-size:.55em; color:var(--text-dim); text-transform:uppercase; letter-spacing:.05em; }
+.tv-team { display:block; font-size:.6em; color:var(--text-dim); font-weight:500; }
+.ranking-tv td:nth-child(2) { overflow-wrap:anywhere; }
+.tv-track { display:flex; flex-wrap:wrap; align-items:baseline; gap:6px 18px; margin:0 0 24px; padding:16px 22px; border-radius:var(--radius); border:2px solid var(--primary-line); background:var(--primary-soft); font-size:clamp(1rem, 2vw, 1.7rem); }
+.tv-track-state { flex-basis:100%; font-weight:800; color:var(--primary-ink); }
+.tv-track-name { font-size:1.4em; overflow-wrap:anywhere; }
+.tv-track-time { margin-left:auto; font-size:2em; font-weight:800; font-variant-numeric:tabular-nums; }
+.tv-track.is-running { border-color:var(--success); background:var(--success-soft); }
+.tv-track.is-running .tv-track-state, .tv-track.is-running .tv-track-time { color:var(--success); }
 /* Corridas recentes: tocar corrige o resultado */
 .run-row { width:100%; display:flex; align-items:center; gap:10px; padding:12px 0; background:none; border:none; color:var(--text); font:inherit; text-align:left; }
 button.run-row { cursor:pointer; }
-.run-row .r-name { flex:1; min-width:0; }
+.run-row .r-name { flex:1; min-width:0; overflow-wrap:anywhere; }
 .run-row .r-name small { display:block; color:var(--text-dim); font-size:.8rem; }
 .runs-list li.run-li { padding:0; display:block; }
 .fix-choices .btn-row { flex-wrap:wrap; }
@@ -260,9 +324,59 @@ body.tv main#app { max-width:1400px; }
 .ranking-tv h1 { font-size:clamp(2rem, 4.5vw, 3.6rem); margin:0 0 4px; }
 .ranking-tv .tv-sub { font-size:clamp(1rem, 1.8vw, 1.5rem); margin:0 0 22px; }
 .ranking-tv table { font-size:clamp(1.1rem, 2.4vw, 2.1rem); }
-.tv-last { display:flex; flex-wrap:wrap; align-items:center; gap:10px 16px; margin:0 0 24px; padding:16px 20px; border-radius:var(--radius); background:var(--primary-soft); border:1px solid rgba(255,199,0,.35); font-size:clamp(1rem, 2vw, 1.7rem); }
+.tv-last { display:flex; flex-wrap:wrap; align-items:center; gap:10px 16px; margin:0 0 24px; padding:16px 20px; border-radius:var(--radius); background:var(--primary-soft); border:1px solid var(--primary-line); font-size:clamp(1rem, 2vw, 1.7rem); }
 .tv-last strong { font-size:1.1em; }
 .tv-last .tv-time { font-weight:800; font-variant-numeric:tabular-nums; }
+/* ---------- Telas maiores (tablet, notebook, monitor) ----------
+   O celular é a base; daqui para baixo só entra o que muda com mais espaço. */
+:focus-visible { outline:2px solid var(--primary-ink); outline-offset:2px; }
+/* Movimento reduzido: o ponto fica parado (o título da fase já diz o
+   estado) e painéis aparecem sem deslizar. */
+@media (prefers-reduced-motion: reduce) {
+  .live-dot { animation:none; }
+  .sheet, body .sheet, .sheet-bd { transition:opacity .15s; }
+  .tile:hover, .btn-primary:active, .btn-valid:active, .btn-danger:active, .btn-ghost:active, .participant-btn:active { transform:none; }
+}
+.desk-only { display:none; }
+.tv-narrow { display:none; }
+
+/* Tablet em diante: formulários viram uma janela no meio da tela */
+@media (min-width: 768px) {
+  body .sheet { left:50%; right:auto; top:50%; bottom:auto; width:min(560px, 92vw); max-height:85vh;
+    border:1px solid var(--border-strong); border-radius:20px; padding:18px 22px 22px;
+    transform:translate(-50%, -46%); opacity:0; transition:transform .2s ease, opacity .2s ease; }
+  body .sheet.on { transform:translate(-50%, -50%); opacity:1; }
+  body .sheet-grab { display:none; }
+}
+
+/* Notebook em diante */
+@media (min-width: 900px) {
+  main#app { padding-top:32px; }
+  body[data-page="home"] main#app, body[data-page="config"] main#app { max-width:960px; }
+  body[data-page="roster"] main#app { max-width:860px; }
+  body[data-page="detail"] main#app { max-width:1240px; }
+
+  /* Início e Configurações: blocos em duas colunas */
+  .tiles { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:14px; }
+  .tile-hero { grid-column:1 / -1; }
+
+  /* Competição: controle da corrida e corridas à esquerda, ranking à direita, tudo à vista */
+  .detail-grid { display:grid; grid-template-columns:minmax(0, 5fr) minmax(0, 6fr); gap:0 24px; align-items:start;
+    grid-template-areas:"phase rank" "runs rank"; }
+  .detail-grid .dg-phase { grid-area:phase; }
+  .detail-grid .dg-rank { grid-area:rank; display:block !important; }
+  .detail-grid .dg-runs { grid-area:runs; display:block !important; }
+  .detail-grid .tabs-bar { display:none; }
+  .detail-grid .desk-only { display:flex; }
+}
+
+/* Painel: tabela quando cabe, lista (igual à do celular) quando não */
+@media (max-width: 699px) {
+  .tv-wide { display:none; }
+  .tv-narrow { display:block; }
+  .ranking-tv { padding:8px 0; }
+}
+
 
 label { display:block; margin-bottom:14px; font-size:.82rem; color:var(--text-dim); font-weight:600; }
 input, select {
@@ -271,10 +385,10 @@ input, select {
   transition:border-color .15s, box-shadow .15s;
 }
 input:disabled { opacity:.45; }
-input:focus, select:focus { outline:none; border-color:var(--primary); box-shadow:0 0 0 3px var(--primary-soft); }
-.link-btn { background:none; border:none; color:var(--danger); cursor:pointer; font-size:.82rem; font-weight:600; }
-.back { display:inline-flex; align-items:center; gap:4px; margin-bottom:16px; font-size:.88rem; font-weight:600; color:var(--text-dim); transition:color .15s; }
-.back:hover { color:var(--primary); }
+input:focus, select:focus { outline:none; border-color:var(--primary-ink); box-shadow:0 0 0 3px var(--primary-soft); }
+.link-btn { min-height:44px; padding:0 10px; background:none; border:none; color:var(--danger); cursor:pointer; font-size:.82rem; font-weight:600; }
+.back { display:inline-flex; align-items:center; gap:4px; min-height:44px; margin-bottom:8px; font-size:.88rem; font-weight:600; color:var(--text-dim); transition:color .15s; }
+.back:hover { color:var(--primary-ink); }
 details summary { cursor:pointer; color:var(--text-dim); font-size:.88rem; font-weight:600; }
 .import-preview { max-height:320px; overflow:auto; margin-top:12px; border:1px solid var(--border); border-radius:var(--radius-sm); }
 .import-preview th { position:sticky; top:0; background:var(--bg-elev); text-align:left; padding:8px; font-size:.72rem; color:var(--text-dim); text-transform:uppercase; letter-spacing:.05em; }
@@ -302,10 +416,10 @@ details summary { cursor:pointer; color:var(--text-dim); font-size:.88rem; font-
 .team-body { border-top:1px solid var(--border); padding:4px 14px 10px; }
 .robot-row { display:flex; align-items:center; gap:10px; min-height:50px; border-bottom:1px solid var(--border); }
 .robot-row .rn { flex:1; }
-.add-row { width:100%; min-height:46px; margin-top:4px; padding:0; background:none; border:none; color:var(--primary); font-weight:700; font-size:.9rem; text-align:left; cursor:pointer; font-family:inherit; }
+.add-row { width:100%; min-height:46px; margin-top:4px; padding:0; background:none; border:none; color:var(--primary-ink); font-weight:700; font-size:.9rem; text-align:left; cursor:pointer; font-family:inherit; }
 .team-form { padding:12px 0; border-bottom:1px solid var(--border); }
 .team-form.pad { padding:14px; border-bottom:none; }
-.link-primary { color:var(--primary); }
+.link-primary { color:var(--primary-ink); }
 /* Painel que sobe de baixo */
 .sheet-bd { position:fixed; inset:0; background:rgba(0,0,0,.6); opacity:0; pointer-events:none; transition:opacity .2s; z-index:50; }
 .sheet-bd.on { opacity:1; pointer-events:auto; }
@@ -321,16 +435,16 @@ details summary { cursor:pointer; color:var(--text-dim); font-size:.88rem; font-
 .sheet-close:hover { color:var(--text); }
 .sheet .btn-row { margin-top:6px; }
 body.sheet-open { overflow:hidden; }
-.chk { width:22px; height:22px; accent-color:var(--primary); flex-shrink:0; margin:0; }
+.chk { width:22px; height:22px; accent-color:var(--primary-ink); flex-shrink:0; margin:0; }
 /* Só a caixinha marca (área de toque própria); o resto da linha abre/fecha */
 .chk-hit { display:flex; align-items:center; justify-content:center; width:48px; min-height:52px; flex-shrink:0; cursor:pointer; margin:0; }
 .team-head .chk-hit { margin-left:4px; }
 .team-head .chk-hit + .team-toggle { padding-left:2px; }
 .robot-row .chk-hit { width:44px; min-height:48px; margin-left:-10px; }
 .results-h { margin:16px 0 8px; }
-mark.hit { background:var(--primary-soft); color:var(--primary); border-radius:3px; padding:0 1px; }
+mark.hit { background:var(--primary-soft); color:var(--primary-ink); border-radius:3px; padding:0 1px; }
 .icon-btn { width:44px; height:44px; display:flex; align-items:center; justify-content:center; background:none; border:none; color:var(--text-dim); cursor:pointer; border-radius:10px; }
-.icon-btn:hover { color:var(--primary); }
+.icon-btn:hover { color:var(--primary-ink); }
 .bottom-bar { position:sticky; bottom:0; display:flex; gap:10px; padding:12px 0 14px; margin-top:12px; background:var(--bg); border-top:1px solid var(--border); }
 .bottom-bar > * { flex:1; margin-top:0; }
 pre.import-example { background:var(--bg-elev); padding:10px 12px; border-radius:var(--radius-sm); font-size:.8rem; overflow-x:auto; }
@@ -339,17 +453,36 @@ pre.import-example { background:var(--bg-elev); padding:10px 12px; border-radius
 <body>
 <header class="topbar">
 <a class="topbar-home" href="#/">
-    <img src="data:image/png;base64,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" alt="UTFPR" style="height:36px;width:auto;">
-    <div class="brand">RaceTrack UTFPR<small>painel do juiz</small></div>
+    <img src="data:image/png;base64,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" alt="UTFPR" style="height:36px;width:auto;">
+    <div class="brand">RaceTrack UTFPR<small>página do juiz</small></div>
   </a>
+  <button class="theme-toggle" type="button" onclick="toggleTheme()" aria-pressed="false" aria-label="Modo sol (tela clara para luz forte)" title="Modo sol"><svg class="ico-sun" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.5M12 19.5V22M4.2 4.2l1.8 1.8M18 18l1.8 1.8M2 12h2.5M19.5 12H22M4.2 19.8 6 18M18 6l1.8-1.8"/></svg><svg class="ico-moon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg></button>
   <a href="#/config" class="topbar-config" title="Configurações" aria-label="Configurações"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></a>
 </header>
+<div id="sr-status" class="sr-only" aria-live="polite"></div>
+<div class="offline-bar" id="offline-bar" role="status" hidden>Sem conexão com o cronômetro. Confira se o celular está no Wi-Fi dele.</div>
 <main id="app"><p class="muted">Carregando...</p></main>
 <footer class="app-footer">
-  Desenvolvido por : <strong>Matheus Leineker Stanula</strong>
+  Desenvolvido por <strong>Matheus Leineker Stanula</strong>
 </footer>
 <script>
 const API = '/api/v1';
+
+// Modo Sol: escolha de cada aparelho (o juiz no sol, a TV na sala escura).
+function syncThemeToggle() {
+  const b = document.querySelector('.theme-toggle');
+  if (b) b.setAttribute('aria-pressed', document.documentElement.dataset.theme === 'sol' ? 'true' : 'false');
+}
+window.toggleTheme = () => {
+  const sol = document.documentElement.dataset.theme !== 'sol';
+  if (sol) document.documentElement.dataset.theme = 'sol'; else delete document.documentElement.dataset.theme;
+  try { localStorage.setItem('tema', sol ? 'sol' : 'escuro'); } catch (e) {}
+  syncThemeToggle();
+};
+syncThemeToggle();
+// Leitura: acima do pior caso do ESP32 ocupado com a nuvem (~1,5 s) + Wi-Fi ruim.
+// Escrita: importar/renomear regrava arquivos na flash e pode demorar mais.
+const API_TIMEOUT_MS = 6000, API_WRITE_TIMEOUT_MS = 15000;
 let busy = false;
 let pollTimer = null;
 let ctx = {};
@@ -371,7 +504,7 @@ window.filterParticipants = (value) => {
   if (box) box.innerHTML = renderParticipantButtons(lastPendingList, participantFilterText);
 };
 
-const STATUS_LABELS = { pending_validation:'Aguardando validação', valid:'Válida', invalid:'Inválida', dnf:'DNF', retried:'Repetida' };
+const STATUS_LABELS = { pending_validation:'Aguardando validação', valid:'Válida', invalid:'Inválida', dnf:'Não completou', retried:'Repetida' };
 const STATUS_CLASS = { pending_validation:'status-pending', valid:'status-valid', invalid:'status-invalid', dnf:'status-invalid' };
 
 function escapeHtml(s) {
@@ -404,24 +537,6 @@ function medal(pos) {
 function posClass(pos) { return pos >= 1 && pos <= 3 ? 'pos pos-' + pos : 'pos'; }
 
 
-function renderRankingTable(rows) {
-  if (rows.length === 0) return '<p class="muted">Nenhum resultado ainda.</p>';
-  const maxAttempts = rows.reduce((m, r) => Math.max(m, r.attempts.length), 0);
-  const head = Array.from({ length: maxAttempts }, (_, i) => `<th>T${i + 1}</th>`).join('');
-  const body = rows.map(r => {
-    const cells = Array.from({ length: maxAttempts }, (_, i) => r.attempts[i]).map(a => {
-      if (!a) return '<td>&mdash;</td>';
-      const cls = attemptClass(a);
-      const label = a.status === 'dnf' ? 'DNF' : formatElapsed(a.elapsed_us);
-      return `<td class="${cls}${a.is_best ? ' att-best' : ''}">${label}</td>`;
-    }).join('');
-    const hasBest = r.best_elapsed_us != null && r.best_elapsed_us >= 0;
-    const best = `<td class="tv-best${hasBest ? '' : ' none'}">${hasBest ? formatElapsed(r.best_elapsed_us) : 'sem tempo'}</td>`;
-    return `<tr><td class="${posClass(r.position)}">${medal(r.position)}</td><td>${escapeHtml(r.participant_name)}${r.team_name ? ` <span class="p-meta">(${escapeHtml(r.team_name)})</span>` : ''}</td>${best}${cells}</tr>`;
-  }).join('');
-  return `<div class="ranking-table-wrap"><table><thead><tr><th>Pos</th><th>Robô</th><th>Melhor</th>${head}</tr></thead><tbody>${body}</tbody></table></div>`;
-}
-
 // Ranking da tela do juiz: uma linha por robô com o melhor tempo
 // grande; tocar abre as tomadas. As linhas abertas sobrevivem ao polling.
 const rankOpen = new Set();
@@ -436,7 +551,7 @@ function renderRankingList(rows) {
   return '<div class="rk-list">' + rows.map(r => {
     const hasBest = r.best_elapsed_us != null && r.best_elapsed_us >= 0;
     const atts = r.attempts.map((a, i) => a
-      ? `<span class="rk-att ${attemptClass(a)}${a.is_best ? ' att-best' : ''}"><small>${a.day ? 'Dia ' + a.day + ', ' : ''}tomada ${a.attempt || i + 1}</small>${a.status === 'dnf' ? 'DNF' : formatElapsed(a.elapsed_us)}</span>`
+      ? `<span class="rk-att ${attemptClass(a)}${a.is_best ? ' att-best' : ''}"><small>${a.day ? 'Dia ' + a.day + ', ' : ''}tomada ${a.attempt || i + 1}</small>${a.status === 'dnf' ? 'Não completou' : formatElapsed(a.elapsed_us)}</span>`
       : `<span class="rk-att"><small>tomada ${i + 1}</small>&mdash;</span>`).join('');
     return `<details class="rk-row"${rankOpen.has(r.participant_id) ? ' open' : ''} ontoggle="rkToggle(${r.participant_id}, this.open)">
       <summary><span class="${posClass(r.position)} rk-pos">${medal(r.position)}</span>
@@ -466,10 +581,27 @@ async function api(method, path, body, quiet) {
     opts.headers['Content-Type'] = 'application/json';
     opts.body = JSON.stringify(body);
   }
-  const res = await fetch(API + path, opts);
+  // Sem limite, um pedido que o cronômetro nunca responde (sinal fraco)
+  // deixa o "busy" ligado e a tela inteira travada sem aviso.
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), method === 'GET' ? API_TIMEOUT_MS : API_WRITE_TIMEOUT_MS);
+  opts.signal = ctrl.signal;
+  let res, data = null;
+  try {
+    res = await fetch(API + path, opts);
+    if (res.status !== 204) {
+      try { data = await res.json(); } catch (e) {
+        if (ctrl.signal.aborted) throw e; // corpo parou no meio: mesma falha de conexão
+      }
+    }
+  } catch (e) {
+    setOnline(false);
+    throw new Error('Sem conexão com o cronômetro. Confira se o celular está no Wi-Fi dele.');
+  } finally {
+    clearTimeout(timer);
+  }
+  setOnline(true);
   if (res.status === 204) return null;
-  let data = null;
-  try { data = await res.json(); } catch (e) {}
   if (res.status === 401) {
     if (!quiet) openLoginSheet();
     const err = new Error('Precisa entrar com a senha do juiz.');
@@ -478,6 +610,13 @@ async function api(method, path, body, quiet) {
   }
   if (!res.ok) throw new Error((data && data.detail) || 'Não foi possível falar com o cronômetro. Tente de novo.');
   return data;
+}
+
+// Faixa vermelha no topo enquanto o cronômetro não responde (celular saiu
+// da rede dele, cronômetro desligado). Some sozinha na próxima resposta.
+function setOnline(ok) {
+  const bar = document.getElementById('offline-bar');
+  if (bar) bar.hidden = ok;
 }
 
 async function withBusy(fn) {
@@ -523,28 +662,70 @@ let rankingTvTimer = null;
 
 async function renderRankingTv(root, competitionId) {
   root.innerHTML = '<p class="muted">Carregando...</p>';
+  let page = 0, draws = 0;
   const draw = async () => {
-    let competition, ranking, runs;
+    let competition, ranking, runs, armState;
     try {
-      [competition, ranking, runs] = await Promise.all([
+      [competition, ranking, runs, armState] = await Promise.all([
         api('GET', '/competitions/' + competitionId),
         api('GET', '/competitions/' + competitionId + '/ranking'),
         api('GET', '/competitions/' + competitionId + '/runs'),
+        api('GET', '/arm'),
       ]);
     } catch (e) { return; }
 
+    // Ninguém consegue rolar uma TV: o ranking anda sozinho de página em
+    // página (a cada ~9 s), com quantas linhas couberem na altura da tela.
+    const rows = ranking.ranking;
+    const perPage = Math.max(4, Math.floor((window.innerHeight - 330) / 64));
+    const pages = Math.max(1, Math.ceil(rows.length / perPage));
+    if (++draws % 3 === 0) page = (page + 1) % pages;
+    if (page >= pages) page = 0;
+    const pageRows = rows.slice(page * perPage, (page + 1) * perPage);
+
+    const onTrack = armState.armed && armState.competition_id === competitionId;
     const last = runs.filter(r => r.status !== 'retried').pop();
+    const canFull = document.fullscreenEnabled && !document.fullscreenElement;
     root.innerHTML = `<div class="ranking-tv">
-      <h1>${escapeHtml(competition.name)}</h1>
-      <p class="muted tv-sub">${competition.status === 'finished' ? 'Ranking final' : 'Ranking'}</p>
-      ${last ? `<div class="tv-last"><span class="muted">Última corrida</span><strong>${escapeHtml(last.participant_name)}</strong>
-        <span class="tv-time ${attemptClass(last)}">${last.status === 'dnf' ? 'DNF' : formatElapsed(last.elapsed_us)}</span>
+      <div class="tv-head">
+        <div><h1>${escapeHtml(competition.name)}</h1>
+        <p class="muted tv-sub">${competition.status === 'finished' ? 'Ranking final' : 'Ranking'}${pages > 1 ? ` · página ${page + 1} de ${pages}` : ''}</p></div>
+        ${canFull ? '<button class="btn-ghost tv-full" type="button" onclick="document.documentElement.requestFullscreen().catch(() => {})">Tela cheia</button>' : ''}
+      </div>
+      ${onTrack ? renderTvOnTrack(armState) : last ? `<div class="tv-last"><span class="muted">Última corrida</span><strong>${escapeHtml(last.participant_name)}</strong>
+        <span class="tv-time ${attemptClass(last)}">${last.status === 'dnf' ? 'Não completou' : formatElapsed(last.elapsed_us)}</span>
         <span class="badge ${STATUS_CLASS[last.status] || ''}">${STATUS_LABELS[last.status] || ''}</span></div>` : ''}
-      ${renderRankingTable(ranking.ranking)}
+      <div class="tv-wide">${renderTvTable(pageRows)}</div>
+      <div class="tv-narrow">${renderRankingList(pageRows)}</div>
     </div>`;
+    syncLiveTimer(armState); // tempo corre na TV entre uma atualização e outra
   };
   await draw();
-  rankingTvTimer = setInterval(draw, 3000);
+  rankingTvTimer = setInterval(() => { if (!document.hidden) draw(); }, 3000);
+}
+
+// O público vê quem está na pista e o tempo correndo, não só o ranking.
+function renderTvOnTrack(a) {
+  const state = a.started ? 'Correndo' : a.released ? 'Liberado, aguardando largada' : 'Na pista';
+  return `<div class="tv-track${a.started ? ' is-running' : ''}">
+    <span class="tv-track-state">${state}</span>
+    <strong class="tv-track-name">${escapeHtml(a.participant_name)}</strong>
+    <span class="muted">Dia ${a.day}, tomada ${a.attempt}</span>
+    ${a.started ? `<span class="tv-track-time" id="live-timer">${formatElapsed(a.elapsed_us != null ? a.elapsed_us : 0)}</span>` : ''}
+  </div>`;
+}
+
+// Tabela da TV: só o que se lê de longe. As tomadas uma a uma ficam na
+// página do juiz (uma coluna por tomada vazava para os lados na TV).
+function renderTvTable(rows) {
+  if (rows.length === 0) return '<p class="muted">Nenhum resultado ainda.</p>';
+  const body = rows.map(r => {
+    const hasBest = r.best_elapsed_us != null && r.best_elapsed_us >= 0;
+    return `<tr><td class="${posClass(r.position)}">${medal(r.position)}</td>
+      <td>${escapeHtml(r.participant_name)}${r.team_name ? `<small class="tv-team">${escapeHtml(r.team_name)}</small>` : ''}</td>
+      <td class="tv-best${hasBest ? '' : ' none'}">${hasBest ? formatElapsed(r.best_elapsed_us) : 'sem tempo'}</td></tr>`;
+  }).join('');
+  return `<table><thead><tr><th>Posição</th><th>Robô</th><th>Melhor tempo</th></tr></thead><tbody>${body}</tbody></table>`;
 }
 
 // ------------------- Roteamento -------------------
@@ -566,7 +747,7 @@ function sendDisplayContext() {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify(displayContext),
-  }).catch(() => {}); // melhor esforço - não incomoda o juiz se falhar
+  }).then(() => setOnline(true), () => setOnline(false)); // também serve de teste de conexão a cada 10 s
 }
 
 function setDisplayContext(view, competitionId, phase) {
@@ -612,12 +793,19 @@ function openSheet(title, bodyHtml, onMount) {
   sheet.querySelectorAll('[data-sheet-close]').forEach(b => b.addEventListener('click', closeSheet));
   const body = sheet.querySelector('.sheet-body');
   if (onMount) onMount(body);
+  if (!sheet.classList.contains('on')) sheetOpener = document.activeElement;
   bd.classList.add('on');
   sheet.classList.add('on');
   document.body.classList.add('sheet-open');
-  // foca o 1º campo de texto (abre o teclado já no lugar certo)
-  const first = body.querySelector('input:not([type=file]):not([type=hidden]), select');
-  if (first) setTimeout(() => first.focus(), 260);
+  setSheetInert(true); // Tab e leitor de tela ficam dentro do painel
+  // foca o 1º campo de texto (abre o teclado já no lugar certo); sem campo, o "Fechar"
+  const first = body.querySelector('input:not([type=file]):not([type=hidden]), select') || sheet.querySelector('.sheet-close');
+  setTimeout(() => first.focus(), 260);
+}
+
+let sheetOpener = null;
+function setSheetInert(on) {
+  document.querySelectorAll('body > header, body > main, body > footer').forEach(el => { el.inert = on; });
 }
 
 // Login do juiz: abre quando o cronômetro responde 401. "Só ver" fecha e
@@ -654,6 +842,9 @@ function closeSheet() {
   sheetEls.bd.classList.remove('on');
   sheetEls.sheet.classList.remove('on');
   document.body.classList.remove('sheet-open');
+  setSheetInert(false);
+  if (sheetOpener && sheetOpener.isConnected) sheetOpener.focus({ preventScroll: true });
+  sheetOpener = null;
 }
 
 function render() {
@@ -671,6 +862,8 @@ function render() {
   const mList = hash.match(/^#\/competitions$/);
   const mHistory = hash.match(/^#\/history$/);
   const mConfig = hash.match(/^#\/config$/);
+  document.body.dataset.page = mRankingTv ? 'tv' : mDetail ? 'detail' : mRoster ? 'roster' : mConfig ? 'config'
+    : (mParticipants || mAddParticipants || mEditCompetition || mNew || mList || mHistory) ? 'form' : 'home';
 
   const id = m => parseInt(m[1], 10);
   document.body.classList.toggle('tv', !!mRankingTv); // Painel: sem a barra do juiz
@@ -817,7 +1010,7 @@ function openCloudSheet(cfg, done) {
   openSheet('Ranking online', `
     <p class="muted hint" style="margin-top:0;">Opcional: manda os resultados para um ranking na internet. O cronômetro funciona normalmente sem isso. Para desligar, apague o endereço.</p>
     <form id="cloud-form">
-      <label>Endereço<input name="base_url" placeholder="Ex.: http://192.168.15.23:8001" value="${escapeHtml(cfg.base_url)}" autocomplete="off"></label>
+      <label>Endereço<input name="base_url" placeholder="Endereço passado por quem cuida do ranking online" value="${escapeHtml(cfg.base_url)}" autocomplete="off"></label>
       <label>Chave de acesso<input name="device_token" type="password" autocomplete="off" placeholder="${cfg.has_token ? 'Já salva. Deixe em branco para manter' : ''}"></label>
       <p id="test-result" class="muted" style="margin:0 0 10px;"></p>
       <div class="btn-row">
@@ -1563,8 +1756,8 @@ async function renderRosterPage(root) {
     const bad = rows.length - ok.length;
     const nTeams = new Set(ok.map(r => normalizeKey(r.team))).size;
     openSheet('Importar arquivo', `
-      <p style="margin-top:0;"><strong>${ok.length}</strong> robô(s) de <strong>${nTeams}</strong> equipe(s) prontos para cadastrar` +
-      (bad ? ` · <span style="color:var(--danger);">${bad} linha(s) com problema serão ignoradas</span>` : '') + `.</p>
+      <p style="margin-top:0;">${plural(ok.length, 'robô', 'robôs').replace(/^\d+/, '<strong>$&</strong>')} de ${plural(nTeams, 'equipe', 'equipes').replace(/^\d+/, '<strong>$&</strong>')} ${ok.length === 1 ? 'pronto' : 'prontos'} para cadastrar` +
+      (bad ? ` · <span style="color:var(--danger);">${bad === 1 ? '1 linha com problema será ignorada' : bad + ' linhas com problema serão ignoradas'}</span>` : '') + `.</p>
       <p class="muted hint">Equipes e robôs que já existem são ignorados (não duplicam).</p>
       <div class="import-preview"><table>
         <thead><tr><th>#</th><th>Equipe</th><th>Robô</th><th>Código</th><th>Situação</th></tr></thead>
@@ -1573,7 +1766,7 @@ async function renderRosterPage(root) {
       </table></div>
       <div class="btn-row">
         <button class="btn-ghost" type="button" id="import-back-btn">Outro arquivo</button>
-        <button class="btn-primary" type="button" id="import-confirm-btn" ${ok.length === 0 ? 'disabled' : ''}>Cadastrar ${ok.length} robô(s)</button>
+        <button class="btn-primary" type="button" id="import-confirm-btn" ${ok.length === 0 ? 'disabled' : ''}>Cadastrar ${plural(ok.length, 'robô', 'robôs')}</button>
       </div>`, (body) => {
       body.querySelector('#import-back-btn').addEventListener('click', () => openImportSheet(null));
       body.querySelector('#import-confirm-btn').addEventListener('click', () => {
@@ -1582,10 +1775,10 @@ async function renderRosterPage(root) {
           const res = await api('POST', '/participants/import', { participants });
           closeSheet();
           const partsMsg = [];
-          if (res.participants_created) partsMsg.push(res.participants_created + ' robô(s) cadastrado(s)');
-          if (res.teams_created) partsMsg.push(res.teams_created + ' equipe(s) nova(s)');
-          if (res.participants_existing) partsMsg.push(res.participants_existing + ' já existia(m) e foi(ram) ignorado(s)');
-          if (res.failed) partsMsg.push(res.failed + ' não cadastrado(s): limite de capacidade do cronômetro atingido');
+          if (res.participants_created) partsMsg.push(plural(res.participants_created, 'robô cadastrado', 'robôs cadastrados'));
+          if (res.teams_created) partsMsg.push(plural(res.teams_created, 'equipe nova', 'equipes novas'));
+          if (res.participants_existing) partsMsg.push(plural(res.participants_existing, 'já existia e foi ignorado', 'já existiam e foram ignorados'));
+          if (res.failed) partsMsg.push(plural(res.failed, 'não cadastrado', 'não cadastrados') + ': o cronômetro chegou ao limite de robôs');
           ui.msg = { text: 'Importação concluída: ' + (partsMsg.join(', ') || 'nada a fazer') + '.', warn: res.failed > 0 };
           rerender();
         });
@@ -1889,6 +2082,9 @@ async function renderEditCompetition(root, id) {
 
 async function renderCompetitionDetail(root, id) {
   root.innerHTML = '<p class="muted">Carregando...</p>';
+  lastPendingSeen = undefined; // primeira atualização desta tela não vibra
+  lastAnnounced = ''; // nem anuncia
+  lastVerdict = null;
   activeDetailTab = 'ranking'; // reseta ao entrar numa competição (evita herdar aba de uma visita anterior)
   const ok = await refreshDetail(root, id);
   // Pula o tick do polling enquanto uma ação (doValidate/doArm/etc, via
@@ -1897,10 +2093,20 @@ async function renderCompetitionDetail(root, id) {
   // uma requisição por vez, então a ordem de chegada não é garantida) e
   // sobrescrever a tela já atualizada com o estado antigo, dando a
   // impressão de que o clique não fez nada (era preciso clicar de novo).
+  //
+  // Cada celular aberto aqui pergunta ao mesmo ESP32 que mede o tempo:
+  // rápido só com corrida em jogo; fora disso (escolhendo robô, dia
+  // concluído) 1 a cada 3 rodadas; com a aba escondida, nada.
+  let tick = 0;
   if (ok) pollTimer = setInterval(() => {
-    if (!busy && document.activeElement?.id !== 'participant-search') refreshDetail(root, id);
+    tick++;
+    if (document.hidden || busy || document.activeElement?.id === 'participant-search') return;
+    if (!LIVE_PHASES.has(lastPhase) && tick % 3) return;
+    refreshDetail(root, id);
   }, 1500);
 }
+const LIVE_PHASES = new Set(['locked', 'waiting_start', 'running', 'validate']);
+let lastPhase = '';
 
 // Guarda de sequência: se duas chamadas a refreshDetail estiverem em voo
 // ao mesmo tempo (ex.: o polling disparou bem no instante em que uma
@@ -1924,18 +2130,111 @@ async function refreshDetail(root, id) {
     ]);
   } catch (e) {
     if (mySeq !== refreshSeq) return false; // resposta atrasada - descarta
+    // Falha passageira com a tela já montada: mantém a última tela (a faixa
+    // vermelha avisa) e a próxima atualização a corrige sozinha.
+    if (root.querySelector('.detail-title')) return false;
     root.innerHTML = '<a class="back" href="#/">&larr; Início</a><p>' + escapeHtml(e.message) + '</p>';
     return false;
   }
   if (mySeq !== refreshSeq) return false; // resposta atrasada - descarta
-  ctx = { competitionId: id, currentDay: dayStatus.current_day, finished: competition.status === 'finished' };
+  ctx = { competitionId: id, currentDay: dayStatus.current_day, finished: competition.status === 'finished', name: competition.name };
   lastRuns = runs;
-  setDisplayContext('competition', id, derivePhase(competition, dayStatus, armState, runs).phase);
-  root.innerHTML = renderDetailHtml(competition, dayStatus, armState, ranking, runs);
-  applyDetailTab(); // reaplica a aba ativa (o innerHTML acima sempre volta pro estado "padrão" do HTML)
+  lastRanking = ranking.ranking;
+  const derived = derivePhase(competition, dayStatus, armState, runs);
+  lastPhase = derived.phase;
+  vibrateOnNewResult(derived);
+  announcePhase(derived, armState, dayStatus);
+  setDisplayContext('competition', id, derived.phase);
+  const html = renderDetailHtml(competition, dayStatus, armState, ranking, runs);
+  // Nada mudou (o caso comum do polling): não refaz a tela, então foco,
+  // seleção e listas abertas ficam onde estão.
+  if (html !== lastDetailHtml || !root.querySelector('.detail-title')) {
+    const focus = focusSnapshot(root);
+    root.innerHTML = html;
+    lastDetailHtml = html;
+    applyDetailTab(); // reaplica a aba ativa (o innerHTML acima sempre volta pro estado "padrão" do HTML)
+    focusRestore(root, focus);
+  }
   syncLiveTimer(armState);
   return true;
 }
+let lastDetailHtml = '';
+
+// Refazer a tela destrói o elemento com foco; guarda qual era (pelo que ele
+// faz/diz) para devolver o foco ao equivalente na tela nova.
+const FOCUSABLE = 'button, a[href], summary, input, select';
+function focusSnapshot(root) {
+  const el = document.activeElement;
+  if (!el || el === document.body || !root.contains(el)) return null;
+  return { act: el.getAttribute('onclick') || el.id || '', text: el.textContent.trim() };
+}
+function focusRestore(root, f) {
+  if (!f) return;
+  const all = [...root.querySelectorAll(FOCUSABLE)];
+  const el = all.find(e => f.act && (e.getAttribute('onclick') || e.id || '') === f.act)
+    || all.find(e => e.textContent.trim() === f.text);
+  if (el) el.focus({ preventScroll: true });
+}
+
+// Leitor de tela: avisa quando a fase da corrida muda (não a cada tique do tempo).
+let lastAnnounced = '';
+function announcePhase(derived, armState, dayStatus) {
+  const name = derived.pendingRun ? derived.pendingRun.participant_name : armState.participant_name;
+  const msg = {
+    finished: 'Competição encerrada.',
+    validate: derived.pendingRun && `Resultado para validar: ${name}, ${formatElapsed(derived.pendingRun.elapsed_us)}.`,
+    day_complete: `Dia ${dayStatus.current_day} concluído.`,
+    locked: `Pronto para liberar: ${name}.`,
+    waiting_start: `Corrida liberada: ${name}. Aguardando largada.`,
+    running: `Corrida em andamento: ${name}.`,
+    select: 'Escolher robô.',
+  }[derived.phase] || '';
+  if (msg === lastAnnounced) return;
+  const first = lastAnnounced === '';
+  lastAnnounced = msg;
+  if (!first) document.getElementById('sr-status').textContent = msg; // ao abrir a tela, o próprio conteúdo já informa
+}
+
+// Vibra o celular (Android; o iPhone não deixa) quando aparece um resultado
+// novo para validar. Não vibra ao abrir a tela com um resultado já esperando.
+let lastPendingSeen;
+function vibrateOnNewResult(derived) {
+  const id = derived.phase === 'validate' ? String(derived.pendingRun.event_id || derived.pendingRun.id) : '';
+  if (id && lastPendingSeen !== undefined && id !== lastPendingSeen &&
+      typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate([200, 100, 200]);
+  lastPendingSeen = id;
+}
+
+// Planilha do ranking: abre no Excel em português (ponto e vírgula + BOM).
+let lastRanking = [];
+function rankingCsv(rows) {
+  const cell = (v) => /[;"\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+  const maxAtt = rows.reduce((m, r) => Math.max(m, r.attempts.length), 0);
+  const head = ['Posição', 'Robô', 'Equipe', 'Melhor tempo'];
+  for (let i = 0; i < maxAtt; i++) {
+    const a = rows.map(r => r.attempts[i]).find(Boolean);
+    head.push(a && a.day ? `Dia ${a.day} tomada ${a.attempt}` : `Tomada ${i + 1}`);
+  }
+  const lines = rows.map(r => {
+    const hasBest = r.best_elapsed_us != null && r.best_elapsed_us >= 0;
+    const atts = Array.from({ length: maxAtt }, (_, i) => {
+      const a = r.attempts[i];
+      if (!a) return '';
+      if (a.status === 'dnf') return 'Não completou';
+      const t = formatElapsed(a.elapsed_us);
+      return a.status === 'valid' ? t : a.status === 'invalid' ? t + ' (inválida)' : t + ' (aguardando)';
+    });
+    return [r.position + 'º', r.participant_name, r.team_name || '', hasBest ? formatElapsed(r.best_elapsed_us) : 'sem tempo', ...atts].map(cell).join(';');
+  });
+  return '\uFEFF' + [head.map(cell).join(';'), ...lines].join('\r\n') + '\r\n';
+}
+window.downloadRankingCsv = () => {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([rankingCsv(lastRanking)], { type: 'text/csv;charset=utf-8' }));
+  a.download = (normalizeKey(ctx.name || 'competicao').replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') || 'competicao') + '_ranking.csv';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+};
 
 // Tempo correndo no celular: o ESP manda quanto já passou a
 // cada atualização; entre elas a página conta sozinha. O oficial é o do ESP.
@@ -1959,16 +2258,17 @@ let lastRuns = [];
 window.openRunSheet = (runId) => {
   const r = lastRuns.find(x => x.id === runId);
   if (!r) return;
-  const choices = [['valid', 'Válida', 'btn-primary'], ['invalid', 'Inválida', 'btn-danger'], ['dnf', 'Não completou (DNF)', 'btn-ghost']]
+  const choices = [['valid', 'Válida', 'btn-primary'], ['invalid', 'Inválida', 'btn-danger'], ['dnf', 'Não completou', 'btn-ghost']]
     .filter(c => c[0] !== r.status);
   openSheet('Corrigir resultado', `
     <p class="phase-who"><strong>${escapeHtml(r.participant_name)}</strong> <small>· Dia ${r.day}, tomada ${r.attempt}</small></p>
-    <p class="time-display" style="font-size:2.4rem; margin:8px 0;">${r.status === 'dnf' ? 'DNF' : formatElapsed(r.elapsed_us)}</p>
+    <p class="time-display" style="font-size:2.4rem; margin:8px 0;">${r.status === 'dnf' ? 'Sem tempo' : formatElapsed(r.elapsed_us)}</p>
     <p class="muted hint">Está como <strong>${STATUS_LABELS[r.status] || r.status}</strong>. Mudar para:</p>
     <div class="fix-choices">${choices.map(c => `<button class="${c[2]}" type="button" data-st="${c[0]}">${c[1]}</button>`).join('')}</div>
     <button class="btn-ghost" type="button" data-sheet-close>Cancelar</button>`, (body) => {
     body.querySelectorAll('[data-st]').forEach(b => b.addEventListener('click', () => withBusy(async () => {
       await api('PATCH', '/runs/' + r.id + '/validation', { status: b.dataset.st, event_id: r.event_id || '', correction: true });
+      lastVerdict = null; // a faixa mostraria o veredito antigo
       closeSheet();
       await refreshDetail(document.getElementById('app'), ctx.competitionId);
     })));
@@ -1990,7 +2290,7 @@ function derivePhase(competition, dayStatus, armState, runs) {
 
 function renderPhasePanel(competition, dayStatus, armState, derived) {
   const p = derived.phase;
-  const who = (name, day, attempt) => `<p class="phase-who"><strong>${escapeHtml(name)}</strong> <small>· Dia ${day}, tomada ${attempt}</small></p>`;
+  const who = (name, day, attempt) => `<p class="phase-who"><strong>${escapeHtml(name)}</strong> <small>Dia ${day}, tomada ${attempt}</small></p>`; // nome em linha própria (ver .phase .phase-who strong)
 
   if (p === 'finished') {
     return `<div class="panel"><h2>Encerrada</h2><p>Competição encerrada. Veja o ranking final abaixo.</p></div>`;
@@ -1999,13 +2299,17 @@ function renderPhasePanel(competition, dayStatus, armState, derived) {
   if (p === 'validate') {
     const r = derived.pendingRun;
     const ev = escapeHtml(r.event_id || '');
-    return `<div class="panel">
-      <h2>Validar resultado</h2>
+    return `<div class="panel phase" data-phase="validate">
+      <h2 class="phase-title">Validar resultado</h2>
       ${who(r.participant_name, r.day, r.attempt)}
-      <p class="time-display">${formatElapsed(r.elapsed_us)}</p>
-      <button class="btn-primary" onclick="doValidate(${r.id}, 'valid', '${ev}')">Válida</button>
-      <button class="btn-danger" onclick="doValidate(${r.id}, 'invalid', '${ev}')">Inválida</button>
-      <button class="btn-ghost" onclick="doValidate(${r.id}, 'retry', '${ev}')">Repetir tomada</button>
+      <p class="time-display time-stopped">${formatElapsed(r.elapsed_us)}</p>
+      <div class="btn-row verdict-row">
+        <button class="btn-valid" onclick="doValidate(${r.id}, 'valid', '${ev}')">Válida</button>
+        <button class="btn-danger" onclick="doValidate(${r.id}, 'invalid', '${ev}')">Inválida</button>
+      </div>
+      <div class="phase-alt">
+        <button class="btn-ghost" onclick="doValidate(${r.id}, 'retry', '${ev}')">Repetir tomada</button>
+      </div>
     </div>`;
   }
 
@@ -2018,29 +2322,35 @@ function renderPhasePanel(competition, dayStatus, armState, derived) {
   }
 
   if (p === 'locked') {
-    return `<div class="panel">
-      <h2>Pronto para liberar</h2>
+    return `<div class="panel phase" data-phase="locked">
+      <h2 class="phase-title">Pronto para liberar</h2>
       ${who(armState.participant_name, armState.day, armState.attempt)}
       <button class="btn-primary" onclick="doRelease()">Liberar corrida</button>
       <button class="btn-ghost" onclick="doDisarm()">Trocar robô</button>
+      <div class="phase-alt">
+        <button class="btn-ghost danger-outline" onclick="doNoShow()">Não compareceu</button>
+      </div>
     </div>`;
   }
 
   if (p === 'waiting_start') {
-    return `<div class="panel">
-      <h2><span class="live-dot"></span> Aguardando largada</h2>
+    return `<div class="panel phase" data-phase="waiting_start">
+      <h2 class="phase-title"><span class="live-dot" aria-hidden="true"></span> Aguardando largada</h2>
       ${who(armState.participant_name, armState.day, armState.attempt)}
       <p class="muted" style="margin:0;">Liberado: o tempo começa quando o robô passar pelo sensor de largada.</p>
       <button class="btn-ghost" onclick="doDisarm()">Trocar robô</button>
+      <div class="phase-alt">
+        <button class="btn-ghost danger-outline" onclick="doNoShow()">Não compareceu</button>
+      </div>
     </div>`;
   }
 
   if (p === 'running') {
-    return `<div class="panel">
-      <h2><span class="live-dot"></span> Corrida em andamento</h2>
+    return `<div class="panel phase" data-phase="running">
+      <h2 class="phase-title"><span class="live-dot" aria-hidden="true"></span> Corrida em andamento</h2>
       ${who(armState.participant_name, armState.day, armState.attempt)}
       <p class="time-display live" id="live-timer">${formatElapsed(armState.elapsed_us != null ? armState.elapsed_us : 0)}</p>
-      <div class="btn-row">
+      <div class="phase-alt">
         <button class="btn-ghost" onclick="doRetry()">Repetir tomada</button>
         <button class="btn-ghost danger-outline" onclick="doAbort()">Abortar</button>
       </div>
@@ -2056,7 +2366,7 @@ function renderPhasePanel(competition, dayStatus, armState, derived) {
   lastPendingList = pending;
   return `<div class="panel">
     <h2>Escolher robô</h2>
-    <input id="participant-search" type="text" placeholder="Buscar robô..." value="${escapeHtml(participantFilterText)}" oninput="filterParticipants(this.value)" style="margin-bottom:10px; width:100%;">
+    <input id="participant-search" type="search" aria-label="Buscar robô" placeholder="Buscar robô..." value="${escapeHtml(participantFilterText)}" oninput="filterParticipants(this.value)" style="margin-bottom:10px; width:100%;">
     <div class="participant-list pick-list" id="participant-list-box">
       ${renderParticipantButtons(pending, participantFilterText)}
     </div>
@@ -2084,30 +2394,35 @@ function renderDetailHtml(competition, dayStatus, armState, ranking, runs) {
     </div>
     <span class="day-pill">${finished ? 'Encerrada' : `Dia ${dayStatus.current_day} de ${dayStatus.num_days}`}</span>
     <div class="detail-actions">
-      <a class="btn-ghost btn-accent" href="#/competitions/${competition.id}/ranking-tv" target="_blank" rel="noopener">Painel</a>
+      <a class="btn-ghost btn-accent" href="#/competitions/${competition.id}/ranking-tv" target="_blank" rel="noopener" aria-label="Painel para o público, abre em outra aba">Painel (TV)</a>
       ${finished ? '' : `<a class="btn-ghost" href="#/competitions/${competition.id}/participants">Inscritos</a>`}
     </div>
 
-    ${renderPhasePanel(competition, dayStatus, armState, derived)}
+    <div class="detail-grid">
+    <div class="dg-phase">${renderVerdictBar()}${renderPhasePanel(competition, dayStatus, armState, derived)}</div>
 
     <div class="tabs-bar">
       <button class="tab-btn" id="tab-btn-ranking" onclick="switchDetailTab('ranking')">Ranking</button>
       <button class="tab-btn" id="tab-btn-runs" onclick="switchDetailTab('runs')">Corridas recentes</button>
     </div>
 
-    <div id="tab-ranking" class="panel">
+    <div id="tab-ranking" class="panel dg-rank">
+      <h2 class="desk-only">Ranking</h2>
       ${renderRankingList(ranking.ranking)}
+      ${ranking.ranking.length ? '<div class="panel-foot"><button class="link-btn link-primary" type="button" onclick="downloadRankingCsv()">Baixar planilha do ranking</button></div>' : ''}
     </div>
 
-    <div id="tab-runs" class="panel">
+    <div id="tab-runs" class="panel dg-runs">
+      <h2 class="desk-only">Corridas recentes</h2>
       ${runsSorted.length === 0 ? '<p class="muted">Nenhuma corrida ainda.</p>' : `${finished ? '' : '<p class="muted hint" style="margin:0 0 4px;">Toque numa corrida para corrigir o resultado.</p>'}<ul class="runs-list">` +
         runsSorted.map(r => {
           const inner = `<span class="r-name">${escapeHtml(r.participant_name)}<small>Dia ${r.day} · tomada ${r.attempt}</small></span>` +
-            `<span class="r-time">${r.status === 'dnf' ? 'DNF' : formatElapsed(r.elapsed_us)}</span>` +
+            `<span class="r-time">${r.status === 'dnf' ? '' : formatElapsed(r.elapsed_us)}</span>` +
             `<span class="badge ${STATUS_CLASS[r.status] || ''}">${STATUS_LABELS[r.status] || r.status}</span>`;
           const canFix = !finished && r.id >= 0 && ['valid', 'invalid', 'dnf'].includes(r.status);
           return `<li class="run-li">${canFix ? `<button class="run-row" onclick="openRunSheet(${r.id})">${inner}</button>` : `<div class="run-row">${inner}</div>`}</li>`;
         }).join('') + `</ul>`}
+    </div>
     </div>
   `;
 }
@@ -2147,26 +2462,63 @@ window.doDisarm = () => withBusy(async () => {
   await api('DELETE', '/arm');
   await refreshDetail(document.getElementById('app'), ctx.competitionId);
 });
+// Robô que não veio: a tomada conta como Não completou e o cronômetro já
+// seleciona a próxima tomada dele (ver handlePostArmNoShow no firmware).
+window.doNoShow = () => {
+  if (!confirm('Registrar que o robô não compareceu? Esta tomada conta como Não completou.')) return;
+  withBusy(async () => {
+    await api('POST', '/arm/no-show');
+    await refreshDetail(document.getElementById('app'), ctx.competitionId);
+  });
+};
 window.doAbort = () => {
-  if (!confirm('Abortar esta corrida? Ela fica registrada como DNF (não completou).')) return;
+  if (!confirm('Abortar esta corrida? Ela fica registrada como Não completou.')) return;
   withBusy(async () => {
     await api('POST', '/arm/abort');
     await refreshDetail(document.getElementById('app'), ctx.competitionId);
   });
 };
-window.doRetry = () => withBusy(async () => {
-  await api('POST', '/arm/retry');
-  await refreshDetail(document.getElementById('app'), ctx.competitionId);
-});
-window.doValidate = (runId, status, eventId) => withBusy(async () => {
+window.doRetry = () => {
+  if (!confirm('Repetir esta tomada? A corrida em andamento é descartada e o robô corre de novo.')) return;
+  withBusy(async () => {
+    await api('POST', '/arm/retry');
+    await refreshDetail(document.getElementById('app'), ctx.competitionId);
+  });
+};
+window.doValidate = (runId, status, eventId) => {
+  // Repetir apaga o tempo medido e não tem correção depois - só ele confirma.
+  if (status === 'retry' && !confirm('Repetir esta tomada? O tempo medido será descartado e o robô corre de novo.')) return;
+  const run = lastRuns.find(x => x.id === runId);
+  withBusy(async () => {
   try {
     await api('PATCH', '/runs/' + runId + '/validation', { status, event_id: eventId || '' });
+    if (run && status !== 'retry') {
+      lastVerdict = { runId, status, name: run.participant_name, time: formatElapsed(run.elapsed_us), until: Date.now() + VERDICT_BAR_MS };
+    }
   } finally {
     // Mesmo se o ESP32 recusar (lista de corridas mudou),
     // atualiza a tela pra o juiz ver a situação real antes de tentar de novo.
     await refreshDetail(document.getElementById('app'), ctx.competitionId);
   }
-});
+  });
+};
+
+// Depois de Válida/Inválida a tela volta para "Escolher robô"; sem esta
+// faixa o juiz não sabe se o toque contou. "Corrigir" abre a mesma
+// correção de Corridas recentes. Some sozinha na próxima atualização.
+const VERDICT_BAR_MS = 8000;
+let lastVerdict = null;
+function renderVerdictBar() {
+  if (!lastVerdict || Date.now() > lastVerdict.until || !lastRuns.some(r => r.id === lastVerdict.runId)) return '';
+  const v = lastVerdict;
+  const ok = v.status === 'valid';
+  return `<div class="verdict-bar ${ok ? 'is-valid' : 'is-invalid'}" role="status">
+    <svg class="verdict-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ok ? '<path d="M5 12.5l4.5 4.5L19 7.5"/>' : '<path d="M6 6l12 12M18 6 6 18"/>'}</svg>
+    <span class="verdict-text"><strong>${escapeHtml(v.name)}</strong> <span class="verdict-time">${v.time}</span> registrada como ${ok ? 'Válida' : 'Inválida'}</span>
+    <button class="verdict-fix" type="button" onclick="openRunSheet(${v.runId})">Corrigir</button>
+  </div>`;
+}
+
 window.doAdvanceDay = (isLastDay) => {
   const msg = isLastDay
     ? 'Encerrar esta competição? Não será possível registrar mais corridas depois disso.'

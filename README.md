@@ -14,6 +14,7 @@ A primeira versão dependia de um notebook rodando um servidor e de uma rede Wi-
 - Cadastra equipes e robôs, inclusive importando uma planilha (CSV ou JSON).
 - Organiza a competição em dias e tomadas e monta o ranking pelo melhor tempo válido.
 - O juiz escolhe o robô, libera a corrida e depois valida, invalida ou manda repetir a tomada, tudo pelo celular. Dá para corrigir um resultado depois, se alguém errou o toque.
+- Robô que não apareceu para largar é registrado como "não compareceu" com um toque, sem travar o fim do dia.
 - Tem uma tela de **Painel** para deixar numa TV ou notebook mostrando o ranking para o público.
 - O display mostra um QR code para entrar no Wi-Fi do cronômetro e, depois, outro para abrir a página. O juiz não precisa digitar endereço nenhum.
 - Uma chave física troca para o **modo treino**: o robô passa pelos sensores e o tempo aparece no display, sem cadastro nenhum.
@@ -56,6 +57,14 @@ python ferramentas/gerar_pagina.py
 
 Isso compacta a página para dentro do firmware, que é o que deixa uma página desse tamanho caber no ESP32. No Windows também dá para dar dois cliques em `ferramentas/gerar_pagina.bat`. Precisa só do Python 3, sem instalar nada.
 
+## Testes
+
+As funções da página do juiz (busca, leitura de planilha, ranking, formato do tempo) têm testes que rodam no computador, sem o ESP32. Com o Node instalado, na pasta do projeto:
+
+```bash
+node --test
+```
+
 ## Organização das pastas
 
 ```text
@@ -64,6 +73,7 @@ firmware/cronometro/   código do ESP32 (abra o cronometro.ino no Arduino IDE)
 ferramentas/           script que compacta a página para o firmware
 hardware/              ligações e pinos
 docs/                  como usar numa competição
+testes/                testes da página do juiz
 ```
 
 Os pinos, limites (quantos robôs, competições etc.) e tempos ficam todos em `firmware/cronometro/config.h`.

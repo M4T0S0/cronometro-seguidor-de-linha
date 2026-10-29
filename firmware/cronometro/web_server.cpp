@@ -825,6 +825,10 @@ static void handlePatchPendingValidation(int pendingIndex) {
     return;
   }
   const char* storedStatus = isRetry ? "retried" : status;
+  if (strcmp(record->status, "pending_validation") != 0) { // mesmo motivo do caminho normal (segundo toque)
+    sendError(409, "Esta corrida já foi decidida. Confira na lista de corridas.");
+    return;
+  }
 
   storagePendingSetStatus(pendingIndex, storedStatus); // "retried", não "retry" - igual ao caminho normal
 
@@ -944,6 +948,20 @@ static void handlePatchRunValidation(int runId) {
   const char* expectedEventId = in["event_id"] | "";
   if (expectedEventId[0] != '\0' && strcmp(expectedEventId, rows[lineIndex].eventId) != 0) {
     sendError(409, "A lista de corridas mudou. Confira e tente de novo.");
+    return;
+  }
+
+  // Veredito normal só vale para corrida esperando decisão: um segundo
+  // toque (outro celular, rede lenta) não pode gravar de novo nem armar a
+  // próxima tomada por cima de outro robô já escolhido. Correção é o
+  // contrário: só para corrida já decidida.
+  bool wasPending = strcmp(rows[lineIndex].status, "pending_validation") == 0;
+  if (!correction && !wasPending) {
+    sendError(409, "Esta corrida já foi decidida. Confira na lista de corridas.");
+    return;
+  }
+  if (correction && (wasPending || strcmp(rows[lineIndex].status, "retried") == 0)) {
+    sendError(409, "Esta corrida não pode ser corrigida por aqui.");
     return;
   }
 
@@ -1412,6 +1430,16 @@ static void handlePostArm() {
     sendError(404, "Robô não encontrado. Atualize a página.");
     return;
   }
+  // A página só seleciona com nada armado; isto barra um segundo celular
+  // com a tela desatualizada trocando o robô por cima (até no meio da corrida).
+  if (raceControlIsArmed()) {
+    sendError(409, "Já tem um robô selecionado. Use Trocar robô para escolher outro.");
+    return;
+  }
+  if (strcmp(competitionById(competitionId)->status, "finished") == 0) {
+    sendError(409, "A competição já foi encerrada.");
+    return;
+  }
 
   raceControlArm(competitionId, participantId, day, attempt);
 
@@ -1448,6 +1476,63 @@ static void handlePostArmAbort() {
   }
   JsonDocument doc;
   doc["abort_requested"] = true;
+  sendJsonDoc(200, doc);
+}
+
+// Robô que não veio largar: grava a tomada como "Não completou" (dnf) sem
+// tempo e já seleciona a próxima tomada dele, como depois de um Abortar.
+// Sem isto, um robô ausente travava o fim do dia (abortar só vale depois
+// da largada e o dia só termina quando todos fizeram as tomadas).
+static void handlePostArmNoShow() {
+  if (!raceControlIsArmed()) {
+    sendError(400, "Nenhum robô selecionado.");
+    return;
+  }
+  if (raceControlIsStarted()) {
+    sendError(409, "O robô já largou. Use Abortar ou Repetir tomada.");
+    return;
+  }
+  int competitionId = raceControlCompetitionId();
+  int participantId = raceControlParticipantId();
+  int day = raceControlDay();
+  int attempt = raceControlAttempt();
+  const Competition* comp = competitionById(competitionId);
+  const Participant* part = participantById(participantId);
+  if (!comp || !part || day < 1 || attempt < 1) {
+    sendError(404, "Robô não encontrado. Atualize a página.");
+    return;
+  }
+
+  RunContext ctx = {};
+  strlcpy(ctx.competitionSlug, comp->slug, sizeof(ctx.competitionSlug));
+  strlcpy(ctx.participantName, part->name, sizeof(ctx.participantName));
+  ctx.competitionId = competitionId;
+  ctx.participantId = participantId;
+  ctx.day = day;
+  ctx.attempt = attempt;
+  ctx.hasContext = true;
+
+  RunRecord rec = {};
+  int64_t now = nowUs();
+  storageGenerateEventId(now, rec.eventId, sizeof(rec.eventId));
+  rec.competitionId = competitionId;
+  rec.participantId = participantId;
+  rec.day = day;
+  rec.attempt = attempt;
+  rec.startTimestampUs = now;
+  rec.endTimestampUs = now;
+  rec.elapsedUs = 0;
+  strlcpy(rec.status, "dnf", sizeof(rec.status));
+
+  raceControlDisarm(); // antes de gravar: o sensor de largada para de valer na hora
+  storageAppendRun(rec, ctx);
+  cloudSyncTryNow(rec, ctx);
+  maybeAdvanceAttempt(competitionId, participantId, day);
+  idleScreenInvalidate();
+  Serial.printf("[ARM] Nao compareceu: %s, dia %d, tomada %d\n", part->name, day, attempt);
+
+  JsonDocument doc;
+  writeArmStateJson(doc.to<JsonObject>());
   sendJsonDoc(200, doc);
 }
 
@@ -1543,6 +1628,7 @@ static void handleApi() {
       if (segCount == 3 && method == HTTP_DELETE) return handleDeleteArm();
       if (segCount == 4 && segs[3] == "release" && method == HTTP_POST) return handlePostArmRelease();
       if (segCount == 4 && segs[3] == "abort" && method == HTTP_POST) return handlePostArmAbort();
+      if (segCount == 4 && segs[3] == "no-show" && method == HTTP_POST) return handlePostArmNoShow();
       if (segCount == 4 && segs[3] == "retry" && method == HTTP_POST) return handlePostArmRetry();
     } else if (resource == "cloud-config") {
       if (segCount == 3 && method == HTTP_GET) return handleGetCloudConfig();

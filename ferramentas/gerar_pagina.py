@@ -3,7 +3,7 @@ Gera firmware/cronometro/web_page_gz.h a partir de
 firmware/cronometro/pagina/index.html.
 
 A página do juiz é editada como um .html comum e vai para o firmware
-COMPACTADA (gzip): ~80 KB de texto viram ~20 KB de flash. O ESP32 manda
+COMPACTADA (gzip): ~130 KB de texto viram ~38 KB de flash. O ESP32 manda
 os bytes compactados com "Content-Encoding: gzip" e o navegador
 descompacta sozinho.
 
