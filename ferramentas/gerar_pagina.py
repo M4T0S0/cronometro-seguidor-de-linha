@@ -56,7 +56,11 @@ def build_header(html_bytes: bytes) -> str:
 
 
 def main() -> int:
-    html_bytes = SOURCE.read_bytes()
+    # Quebra de linha do Windows (CRLF) vira a do Linux (LF) antes de tudo:
+    # o Git pode guardar o arquivo de um jeito e entregar de outro, e o
+    # resultado tem que ser o mesmo em qualquer computador (inclusive na
+    # conferência automática do GitHub, que roda em Linux).
+    html_bytes = SOURCE.read_bytes().replace(b"\r\n", b"\n")
     header = build_header(html_bytes)
 
     if "--check" in sys.argv:
