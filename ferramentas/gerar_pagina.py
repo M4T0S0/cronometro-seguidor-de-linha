@@ -18,6 +18,7 @@ Só usa a biblioteca padrão do Python.
 """
 import gzip
 import hashlib
+import re
 import sys
 from pathlib import Path
 
@@ -55,6 +56,17 @@ def build_header(html_bytes: bytes) -> str:
     )
 
 
+def embedded_html(header_text: str) -> bytes:
+    """Página guardada num web_page_gz.h, já descompactada (b"" se ilegível)."""
+    try:
+        start = header_text.index("PROGMEM = {") + len("PROGMEM = {")
+        body = header_text[start:header_text.index("};", start)]
+        data = bytes(int(tok, 16) for tok in re.findall(r"0x[0-9a-fA-F]{2}", body))
+        return gzip.decompress(data)
+    except (ValueError, OSError, EOFError):
+        return b""
+
+
 def main() -> int:
     # Quebra de linha do Windows (CRLF) vira a do Linux (LF) antes de tudo:
     # o Git pode guardar o arquivo de um jeito e entregar de outro, e o
@@ -64,8 +76,12 @@ def main() -> int:
     header = build_header(html_bytes)
 
     if "--check" in sys.argv:
+        # Compara a página que está DENTRO do .h (descompactada) com o
+        # index.html, e não os bytes compactados: zlibs de versões
+        # diferentes (Windows x Linux) compactam o mesmo texto em bytes
+        # diferentes, e os dois servem igual para o ESP32.
         current = OUTPUT.read_text(encoding="utf-8") if OUTPUT.exists() else ""
-        if current != header:
+        if embedded_html(current) != html_bytes:
             print("web_page_gz.h DESATUALIZADO - rode: python ferramentas/gerar_pagina.py")
             return 1
         print("web_page_gz.h em dia com pagina/index.html")
