@@ -29,7 +29,7 @@ A primeira versão dependia de um notebook rodando um servidor e de uma rede Wi-
 4. Para cada corrida: escolho o robô, toco em **Liberar**, o robô passa pelos sensores e o tempo aparece no celular e no display. Toco em **Válida**, **Inválida** ou **Repetir tomada**.
 5. No fim do dia, avanço para o próximo. No último, encerro a competição e o ranking final fica no histórico.
 
-O passo a passo completo, do ponto de vista de quem está julgando, está em [docs/como-usar.md](docs/como-usar.md).
+O passo a passo completo, do ponto de vista de quem está julgando, está em [docs/como-usar.md](docs/como-usar.md). Antes de levar uma versão nova para a pista, eu sigo o [roteiro de testes de bancada](docs/testes-de-bancada.md).
 
 ## Hardware
 
@@ -72,7 +72,7 @@ firmware/cronometro/   código do ESP32 (abra o cronometro.ino no Arduino IDE)
   pagina/              página do juiz, em HTML comum
 ferramentas/           script que compacta a página para o firmware
 hardware/              ligações e pinos
-docs/                  como usar numa competição
+docs/                  como usar numa competição e o roteiro de testes de bancada
 testes/                testes da página do juiz
 ```
 
