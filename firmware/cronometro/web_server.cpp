@@ -96,10 +96,22 @@ static bool checkJudgeAuth() {
 // Contra adivinhação da senha: depois de AUTH_MAX_FAILURES senhas erradas
 // seguidas, recusa o login por AUTH_LOCKOUT_MS (sem delay(), que travaria
 // o cronômetro). Quem já entrou continua usando normalmente.
+// Contado por aparelho (IP): antes era um contador só, e qualquer um
+// errando 5 vezes a cada 30 s deixava o juiz de fora para sempre.
 static const uint8_t AUTH_MAX_FAILURES = 5;
 static const uint32_t AUTH_LOCKOUT_MS = 30000;
-static uint8_t g_authFailures = 0;
-static uint32_t g_authLockedAtMs = 0;
+struct AuthFailures { uint32_t ip; uint8_t count; uint32_t lockedAtMs; };
+static AuthFailures g_authFailures[WIFI_AP_MAX_CLIENTS + 2] = {};
+
+static AuthFailures& authFailuresFor(uint32_t ip) {
+  AuthFailures* oldest = &g_authFailures[0];
+  for (AuthFailures &f : g_authFailures) {
+    if (f.ip == ip) return f;
+    if (f.lockedAtMs < oldest->lockedAtMs) oldest = &f;
+  }
+  *oldest = AuthFailures{ ip, 0, millis() }; // tabela cheia: reaproveita a entrada mais antiga
+  return *oldest;
+}
 
 // Cabeçalhos de proteção em toda resposta: não deixa outro site abrir o
 // painel escondido num iframe (clickjacking) nem o navegador guardar
@@ -224,6 +236,10 @@ static void handlePostParticipant() {
   int teamId = in["team_id"];
 
   int id = participantCreate(name, code, teamId);
+  if (id == -4) {
+    sendError(400, "Nome ou código inválido: não use aspas nem quebra de linha.");
+    return;
+  }
   if (id == -2) {
     sendError(409, "Já existe um robô com esse nome nesta equipe.");
     return;
@@ -261,6 +277,10 @@ static void handlePostTeam() {
     return;
   }
   int id = teamCreate((const char*)in["name"]);
+  if (id == -4) {
+    sendError(400, "Nome inválido: não use aspas nem quebra de linha.");
+    return;
+  }
   if (id == -2) {
     sendError(409, "Já existe uma equipe com esse nome.");
     return;
@@ -298,7 +318,7 @@ static void handlePatchParticipant(int id) {
   int result = participantUpdate(id, name, code, teamId);
   if (result == -2) { sendError(409, "Já existe um robô com esse nome nesta equipe."); return; }
   if (result == -3) { sendError(400, "Escolha uma equipe."); return; }
-  if (result == -4) { sendError(400, "Nome do robô vazio ou com aspas."); return; }
+  if (result == -4) { sendError(400, "Nome ou código inválido: não use aspas nem quebra de linha."); return; }
   if (result < 0) { sendError(404, "Robô não encontrado. Atualize a página."); return; }
 
   JsonDocument out;
@@ -416,6 +436,14 @@ static void handlePostCompetition() {
   int attemptsPerDay = in["attempts_per_day"] | 1;
 
   int id = competitionCreate(name, numDays, attemptsPerDay);
+  if (id == -4) {
+    sendError(400, "Nome inválido: não use aspas nem quebra de linha.");
+    return;
+  }
+  if (id == -3) {
+    sendError(400, "Dias e tomadas por dia precisam ficar entre 1 e 10.");
+    return;
+  }
   if (id < 0) {
     sendError(400, "Limite de competições do cronômetro atingido.");
     return;
@@ -449,7 +477,7 @@ static void handlePatchCompetition(int id) {
       return;
     }
     if (r == -4) {
-      sendError(400, "Nome da competição vazio ou com aspas.");
+      sendError(400, "Nome inválido: não use aspas nem quebra de linha.");
       return;
     }
     cloudSyncCompetitionStatus(id); // ranking online passa a mostrar o nome novo
@@ -465,6 +493,10 @@ static void handlePatchCompetition(int id) {
   int attemptsPerDay = in["attempts_per_day"] | 1;
 
   int result = competitionUpdate(id, numDays, attemptsPerDay);
+  if (result == -3) {
+    sendError(400, "Dias e tomadas por dia precisam ficar entre 1 e 10.");
+    return;
+  }
   if (result == -1) {
     sendError(404, "Competição não encontrada. Atualize a página.");
     return;
@@ -964,6 +996,10 @@ static void handlePatchRunValidation(int runId) {
     sendError(409, "Esta corrida não pode ser corrigida por aqui.");
     return;
   }
+  if (strcmp(status, "valid") == 0 && rows[lineIndex].elapsedUs <= 0) {
+    sendError(409, "Esta tomada não tem tempo medido (o robô não completou ou não compareceu).");
+    return;
+  }
 
   strlcpy(rows[lineIndex].status, storedStatus, sizeof(rows[lineIndex].status));
   storageRewriteDayJsonl(c->slug, day, rows, n);
@@ -1086,8 +1122,11 @@ static void handlePostCloudConfig() {
   CloudSyncConfig cfg;
   strlcpy(cfg.baseUrl, in["base_url"] | "", sizeof(cfg.baseUrl));
   strlcpy(cfg.deviceToken, in["device_token"] | "", sizeof(cfg.deviceToken));
-  // Chave em branco = manter a salva; endereço em branco = desligar tudo.
-  if (cfg.deviceToken[0] == '\0' && cfg.baseUrl[0] != '\0') {
+  // Chave em branco = manter a salva, mas só para o MESMO endereço: trocar
+  // o endereço sem digitar a chave de novo mandaria a chave salva para
+  // outro servidor (auditoria de segurança). Endereço em branco = desligar.
+  if (cfg.deviceToken[0] == '\0' && cfg.baseUrl[0] != '\0' &&
+      strcmp(cfg.baseUrl, cloudSyncGetConfig().baseUrl) == 0) {
     strlcpy(cfg.deviceToken, cloudSyncGetConfig().deviceToken, sizeof(cfg.deviceToken));
   }
 
@@ -1340,25 +1379,26 @@ static void handleGetJudgeAuth() {
 }
 
 static void handlePostLogin() {
-  if (g_authFailures >= AUTH_MAX_FAILURES) {
-    if (millis() - g_authLockedAtMs < AUTH_LOCKOUT_MS) {
+  AuthFailures &fails = authFailuresFor((uint32_t)server.client().remoteIP());
+  if (fails.count >= AUTH_MAX_FAILURES) {
+    if (millis() - fails.lockedAtMs < AUTH_LOCKOUT_MS) {
       sendError(429, "Muitas senhas erradas. Espere 30 segundos e tente de novo.");
       return;
     }
-    g_authFailures = 0;
+    fails.count = 0;
   }
   JsonDocument in;
   readJsonBody(in);
   String given = in["password"] | "";
   if (g_judgePassword[0] == '\0' || !sameSecret(given, g_judgePassword)) {
-    if (g_judgePassword[0] != '\0' && ++g_authFailures >= AUTH_MAX_FAILURES) {
-      g_authLockedAtMs = millis();
+    if (g_judgePassword[0] != '\0' && ++fails.count >= AUTH_MAX_FAILURES) {
+      fails.lockedAtMs = millis();
       Serial.println("[WEB] Senhas erradas demais - login bloqueado por 30 s.");
     }
     sendError(400, "Senha incorreta.");
     return;
   }
-  g_authFailures = 0;
+  fails.count = 0;
   JsonDocument out;
   out["token"] = g_judgeToken;
   sendJsonDoc(200, out);
@@ -1436,8 +1476,13 @@ static void handlePostArm() {
     sendError(409, "Já tem um robô selecionado. Use Trocar robô para escolher outro.");
     return;
   }
-  if (strcmp(competitionById(competitionId)->status, "finished") == 0) {
+  const Competition* comp = competitionById(competitionId);
+  if (strcmp(comp->status, "finished") == 0) {
     sendError(409, "A competição já foi encerrada.");
+    return;
+  }
+  if (day != comp->currentDay || attempt < 1 || attempt > comp->attemptsPerDay) {
+    sendError(400, "Algo deu errado. Atualize a página e tente de novo.");
     return;
   }
 

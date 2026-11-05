@@ -7,6 +7,10 @@ on:
   push:
   pull_request:
 
+# Só lê o repositório: nada aqui precisa escrever no GitHub.
+permissions:
+  contents: read
+
 env:
   ESP32_URL: https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
 

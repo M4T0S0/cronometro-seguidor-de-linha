@@ -164,6 +164,12 @@ bool storageRewriteDayJsonl(const char* competitionSlug, int day, const StoredRu
 // verdade.
 bool storageIsOk();
 
+// Os arquivos são salvos escrevendo um ".tmp", apagando o original e
+// renomeando. Se a energia cair entre o apagar e o renomear, o original
+// some e o ".tmp" completo fica: isto o devolve ao lugar. Se os dois
+// existem, o ".tmp" é sobra de uma gravação interrompida e é descartado.
+void storageRecoverTmp(const char* finalPath);
+
 // Gera um event_id único baseado no chip ID do ESP32 + timestamp de
 // início da corrida.
 void storageGenerateEventId(int64_t startTimestampUs, char* buffer, size_t bufferSize);

@@ -84,5 +84,6 @@ struct FakeEsp {
 extern FakeEsp ESP;
 
 inline bool isDigit(char c) { return c >= '0' && c <= '9'; }
+template <class T> inline T constrain(T v, T lo, T hi) { return v < lo ? lo : (v > hi ? hi : v); }
 unsigned long millis();
 inline void delay(unsigned long) {}

@@ -32,6 +32,10 @@ static void IRAM_ATTR handleEdge(SensorState *s) {
   }
 
   s->lastValidEdgeUs = now;
+  // Passagem anterior ainda não lida (o loop ficou ocupado com a página):
+  // fica a primeira, que é o tempo certo. Uma segunda passagem não pode
+  // trocar o horário de chegada por um mais tarde.
+  if (s->pendingFlag) return;
   s->pendingEventUs = now;
   s->pendingFlag = true;
 }

@@ -27,10 +27,11 @@ SOURCE = SKETCH / "pagina" / "index.html"
 OUTPUT = SKETCH / "web_page_gz.h"
 
 
-def build_header(html_bytes: bytes) -> str:
+def build_header(html_bytes: bytes, gz: bytes = None) -> str:
     sha = hashlib.sha256(html_bytes).hexdigest()[:16]
     # mtime=0: mesma entrada gera sempre os mesmos bytes (diff limpo no git)
-    gz = gzip.compress(html_bytes, compresslevel=9, mtime=0)
+    if gz is None:
+        gz = gzip.compress(html_bytes, compresslevel=9, mtime=0)
     lines = []
     for i in range(0, len(gz), 20):
         lines.append("  " + ", ".join(f"0x{b:02x}" for b in gz[i:i + 20]) + ",")
@@ -56,15 +57,28 @@ def build_header(html_bytes: bytes) -> str:
     )
 
 
-def embedded_html(header_text: str) -> bytes:
-    """Página guardada num web_page_gz.h, já descompactada (b"" se ilegível)."""
+def embedded_gz(header_text: str) -> bytes:
+    """Bytes compactados guardados num web_page_gz.h (b"" se ilegível)."""
     try:
         start = header_text.index("PROGMEM = {") + len("PROGMEM = {")
         body = header_text[start:header_text.index("};", start)]
-        data = bytes(int(tok, 16) for tok in re.findall(r"0x[0-9a-fA-F]{2}", body))
-        return gzip.decompress(data)
-    except (ValueError, OSError, EOFError):
+        return bytes(int(tok, 16) for tok in re.findall(r"0x[0-9a-fA-F]{2}", body))
+    except ValueError:
         return b""
+
+
+def header_is_current(header_text: str, html_bytes: bytes) -> bool:
+    """O .h guarda exatamente esta página E nada mais foi mexido nele."""
+    gz = embedded_gz(header_text)
+    try:
+        if gzip.decompress(gz) != html_bytes:
+            return False
+    except (OSError, EOFError):
+        return False
+    # Remonta o arquivo inteiro a partir dos MESMOS bytes compactados (que
+    # mudam conforme a versão da zlib) e compara tudo: comentário, tamanho,
+    # SHA e o resto - pega um .h alterado à mão fora da parte compactada.
+    return header_text.replace("\r\n", "\n") == build_header(html_bytes, gz)
 
 
 def main() -> int:
@@ -80,8 +94,8 @@ def main() -> int:
         # index.html, e não os bytes compactados: zlibs de versões
         # diferentes (Windows x Linux) compactam o mesmo texto em bytes
         # diferentes, e os dois servem igual para o ESP32.
-        current = OUTPUT.read_text(encoding="utf-8") if OUTPUT.exists() else ""
-        if embedded_html(current) != html_bytes:
+        current = OUTPUT.read_bytes().decode("utf-8") if OUTPUT.exists() else ""
+        if not header_is_current(current, html_bytes):
             print("web_page_gz.h DESATUALIZADO - rode: python ferramentas/gerar_pagina.py")
             return 1
         print("web_page_gz.h em dia com pagina/index.html")

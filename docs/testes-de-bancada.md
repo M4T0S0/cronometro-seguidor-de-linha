@@ -21,6 +21,7 @@ Crie uma competição de teste com 1 dia, 3 tomadas e 3 robôs.
 - [ ] 1.3 **Trocar robô** volta para a lista; o display acompanha.
 - [ ] 1.4 **Liberar corrida**: a tela fica amarela, **Aguardando largada**. Passar pelo sensor de largada antes de liberar não pode iniciar nada.
 - [ ] 1.5 Largar: a tela fica verde e o **tempo corre no celular**, batendo com o display (diferença de décimos é normal). LED verde aceso, buzzer apita.
+- [ ] 1.5b Passar a mão duas vezes seguidas no sensor de chegada (com meio segundo entre elas): o tempo registrado é o da **primeira** passagem.
 - [ ] 1.6 Chegada: o tempo para, emoldurado, com **Válida** (verde) e **Inválida** (vermelho) lado a lado. LED vermelho aceso.
 - [ ] 1.7 Tocar **Válida**: aparece a faixa "nome, tempo, registrada como Válida" com **Corrigir**, e some sozinha em alguns segundos. LED apaga, display volta ao normal, a próxima tomada do robô já fica selecionada.
 - [ ] 1.8 Tocar **Corrigir** na faixa e trocar para Inválida: o ranking muda e **nenhum robô é selecionado sozinho**.
@@ -70,7 +71,7 @@ Use um celular como "juiz" e outro como "público".
 - [ ] 5.2 **Configurações → Senha do juiz**: menos de 6 caracteres é recusado. Quem cria a senha continua dentro.
 - [ ] 5.3 O público vê a página, o ranking e o Painel sem senha. Ao tentar mexer, sobe **Entrar como juiz** dentro da página. **Só ver** fecha.
 - [ ] 5.4 Senha certa: entra, e não pede de novo nem depois de reiniciar o cronômetro. Repetir no iPhone.
-- [ ] 5.5 Errar 5 vezes: "Muitas senhas erradas. Espere 30 segundos". O juiz já logado continua usando normalmente.
+- [ ] 5.5 Errar 5 vezes num celular: ele recebe "Muitas senhas erradas. Espere 30 segundos". Outro celular, com a senha certa, entra normalmente na mesma hora.
 - [ ] 5.6 **Trocar senha** num celular: o outro passa a pedir a nova. **Sair deste aparelho** pede a senha de novo.
 - [ ] 5.7 Botão de reset (se montado): segurar 3 s ao ligar apaga a rede externa e a senha do juiz; o resto continua.
 
@@ -89,6 +90,7 @@ Use um celular como "juiz" e outro como "público".
 - [ ] 7.3 **Importar**: baixar o modelo, preencher no Excel, salvar como CSV e importar. Importar de novo não duplica.
 - [ ] 7.4 Busca: `ve` acha "Ventania" mas não "Overlord"; `d` não acha "Seguidor de Linha".
 - [ ] 7.5 Excluir um robô que já correu avisa quantas corridas somem. Robô selecionado para correr não pode ser excluído nem removido da competição.
+- [ ] 7.5b Criar competição com 11 dias ou 11 tomadas: é recusado com mensagem clara.
 - [ ] 7.6 Editar a competição: o nome muda mesmo depois de ter corridas; dias e tomadas ficam travados.
 
 ## 8. Aparelhos e telas

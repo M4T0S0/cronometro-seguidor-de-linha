@@ -336,12 +336,26 @@ StoredRun* storageDayRunsScratch() {
   return g_dayRunsScratch;
 }
 
+void storageRecoverTmp(const char* finalPath) {
+  if (!flashOk) return;
+  String tmpPath = String(finalPath) + ".tmp";
+  if (!LittleFS.exists(tmpPath)) return;
+  if (!LittleFS.exists(finalPath)) {
+    LittleFS.rename(tmpPath, finalPath);
+    Serial.print("[STORAGE] Arquivo recuperado depois de queda de energia: ");
+    Serial.println(finalPath);
+  } else {
+    LittleFS.remove(tmpPath);
+  }
+}
+
 int storageReadDayRuns(const char* competitionSlug, int day, StoredRun* outRows, int maxRows) {
   if (!flashOk || !competitionSlug || competitionSlug[0] == '\0' || day <= 0) {
     return 0;
   }
 
   String jsonlPath = dayDirPath(competitionSlug, day) + "/resultados.jsonl";
+  storageRecoverTmp(jsonlPath.c_str());
   if (!LittleFS.exists(jsonlPath)) {
     return 0;
   }

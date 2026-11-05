@@ -1235,8 +1235,8 @@ async function renderNewCompetition(root) {
     <h1>Nova competição</h1>
     <form id="new-comp-form" class="panel">
       <label>Nome<input required name="name" autofocus placeholder="Ex.: Desafio de Verão 2026"></label>
-      <label>Dias<input type="number" min="1" value="1" name="num_days"></label>
-      <label>Tomadas por dia<input type="number" min="1" value="1" name="attempts_per_day"></label>
+      <label>Dias<input type="number" min="1" max="10" value="1" name="num_days"></label>
+      <label>Tomadas por dia<input type="number" min="1" max="10" value="1" name="attempts_per_day"></label>
       <button class="btn-primary" type="submit">Criar competição</button>
     </form>
   `;
@@ -1381,7 +1381,8 @@ function validateImportRows(rows) {
     const row = { team: r.team.trim(), name: r.name.trim(), code: r.code.trim(), error: '' };
     if (!row.team) row.error = 'sem equipe';
     else if (!row.name) row.error = 'sem nome do robô';
-    else if (row.team.includes('"') || row.name.includes('"')) row.error = 'aspas (") não são permitidas';
+    else if (row.team.includes('"') || row.name.includes('"') || row.code.includes('"')) row.error = 'aspas (") não são permitidas';
+    else if (/[\u0000-\u001f]/.test(row.team + row.name + row.code)) row.error = 'quebra de linha dentro do nome ou código';
     else if (byteLen(row.team) > IMPORT_MAX_NAME_BYTES) row.error = 'nome da equipe longo demais';
     else if (byteLen(row.name) > IMPORT_MAX_NAME_BYTES) row.error = 'nome do robô longo demais';
     else if (byteLen(row.code) > IMPORT_MAX_CODE_BYTES) row.error = 'código longo demais';
@@ -1432,10 +1433,12 @@ function takeFlash(key) {
 function validateEditName(name, what) {
   if (!name) return 'Informe o nome ' + what + '.';
   if (name.includes('"')) return 'Aspas (") não são permitidas no nome ' + what + '.';
+  if (/[\u0000-\u001f]/.test(name)) return 'Quebra de linha não é permitida no nome ' + what + '.';
   if (new TextEncoder().encode(name).length > IMPORT_MAX_NAME_BYTES) return 'Nome ' + what + ' longo demais.';
   return '';
 }
 function validateCode(code) {
+  if (/[\u0000-\u001f]/.test(code) || code.includes('"')) return 'O código não pode ter aspas nem quebra de linha.';
   return new TextEncoder().encode(code).length > IMPORT_MAX_CODE_BYTES ? 'Código longo demais.' : '';
 }
 
@@ -2054,8 +2057,8 @@ async function renderEditCompetition(root, id) {
     <h1>Editar competição</h1>
     <form id="edit-comp-form" class="panel">
       <label>Nome<input name="name" required value="${escapeHtml(competition.name)}" autocomplete="off"></label>
-      <label>Dias<input type="number" min="1" name="num_days" value="${competition.num_days}" ${locked ? 'disabled' : ''}></label>
-      <label>Tomadas por dia<input type="number" min="1" name="attempts_per_day" value="${competition.attempts_per_day}" ${locked ? 'disabled' : ''}></label>
+      <label>Dias<input type="number" min="1" max="10" name="num_days" value="${competition.num_days}" ${locked ? 'disabled' : ''}></label>
+      <label>Tomadas por dia<input type="number" min="1" max="10" name="attempts_per_day" value="${competition.attempts_per_day}" ${locked ? 'disabled' : ''}></label>
       ${locked ? '<p class="muted hint" style="margin-top:-4px;">Dias e tomadas não mudam depois da primeira corrida.</p>' : ''}
       <button class="btn-primary" type="submit">Salvar</button>
     </form>
@@ -2208,7 +2211,10 @@ function vibrateOnNewResult(derived) {
 // Planilha do ranking: abre no Excel em português (ponto e vírgula + BOM).
 let lastRanking = [];
 function rankingCsv(rows) {
-  const cell = (v) => /[;"\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+  const cell = (v) => {
+    if (/^[=+\-@]/.test(v)) v = "'" + v; // nome que começa com = viraria fórmula no Excel
+    return /[;"\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+  };
   const maxAtt = rows.reduce((m, r) => Math.max(m, r.attempts.length), 0);
   const head = ['Posição', 'Robô', 'Equipe', 'Melhor tempo'];
   for (let i = 0; i < maxAtt; i++) {

@@ -180,3 +180,14 @@ test('vibra só quando aparece um resultado novo para validar', () => {
   assert.equal(vibrou.length, 1);
   delete p.navigator;
 });
+
+test('quebra de linha e fórmula de planilha são barradas (auditoria de segurança)', () => {
+  assert.match(p.validateEditName('Robo\n2,Impostor', 'do robô'), /Quebra de linha/);
+  assert.match(p.validateCode('C\r1'), /quebra de linha/);
+  assert.equal(p.validateCode('C1'), '');
+  const linhas = p.validateImportRows([{ team: 'Equipe', name: 'Robo\n2,Impostor,,1', code: '' }]);
+  assert.match(linhas[0].error, /quebra de linha/);
+  const csv = p.rankingCsv([{ position: 1, participant_name: '=HYPERLINK("x")', team_name: '@soma', best_elapsed_us: -1, attempts: [] }]);
+  const linha = csv.replace(/^\uFEFF/, '').trim().split('\r\n')[1];
+  assert.ok(linha.includes(`"'=HYPERLINK(""x"")"`) && linha.includes("'@soma"));
+});

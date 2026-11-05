@@ -131,6 +131,11 @@
 // na RAM ao montar ranking/day-status/lista de corridas.
 #define MAX_PARTICIPANTS   80
 #define MAX_COMPETITIONS   20
+// Dias e tomadas por dia de uma competição (auditoria de segurança: um
+// número enorme fazia o ranking varrer milhões de dias e travar o
+// cronômetro para sempre, porque o valor fica gravado).
+#define MAX_DAYS             10
+#define MAX_ATTEMPTS_PER_DAY 10
 #define MAX_LINKS          400
 #define MAX_RUNS_PER_DAY   150
 #define MAX_TEAMS 30 

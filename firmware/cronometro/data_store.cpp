@@ -79,9 +79,29 @@ static void csvWriteField(File &f, const char* value) {
   f.print('"');
   for (const char* p = value; *p; p++) {
     if (*p == '"') f.print("\"\"");
+    else if ((unsigned char)*p < 0x20) f.print(' '); // quebra de linha partiria a linha do CSV
     else f.print(*p);
   }
   f.print('"');
+}
+
+// Aspas duplas quebrariam o JSON montado à mão em cloud_sync.cpp e
+// storage.cpp; caracteres de controle (quebra de linha, tab) partiriam as
+// linhas dos CSVs no próximo boot. Vale para criar, renomear e importar.
+static bool textIsClean(const char* s) {
+  for (const char* p = s; *p; p++) {
+    if (*p == '"' || (unsigned char)*p < 0x20) return false;
+  }
+  return true;
+}
+static bool nameIsValid(const char* name) {
+  return name && name[0] != '\0' && textIsClean(name);
+}
+static bool codeIsValid(const char* code) {
+  return !code || textIsClean(code);
+}
+static bool sizeIsValid(int numDays, int attemptsPerDay) {
+  return numDays >= 1 && numDays <= MAX_DAYS && attemptsPerDay >= 1 && attemptsPerDay <= MAX_ATTEMPTS_PER_DAY;
 }
 
 // ------------------- Persistência: participantes.csv -------------------
@@ -98,6 +118,7 @@ static void skipCsvHeader(File &f) {
 static void loadParticipantsFile() {
   g_participantCount = 0;
   g_nextParticipantId = 1;
+  storageRecoverTmp("/participantes.csv");
   if (!storageIsOk() || !LittleFS.exists("/participantes.csv")) return;
 
   File f = LittleFS.open("/participantes.csv", FILE_READ);
@@ -153,6 +174,7 @@ static void saveParticipantsFile() {
 static void loadCompetitionsFile() {
   g_competitionCount = 0;
   g_nextCompetitionId = 1;
+  storageRecoverTmp("/competicoes.csv");
   if (!storageIsOk() || !LittleFS.exists("/competicoes.csv")) return;
 
   File f = LittleFS.open("/competicoes.csv", FILE_READ);
@@ -177,8 +199,8 @@ static void loadCompetitionsFile() {
     c.id = idStr.toInt();
     strlcpy(c.name, name.c_str(), sizeof(c.name));
     strlcpy(c.slug, slug.c_str(), sizeof(c.slug));
-    c.numDays = numDaysStr.toInt();
-    c.attemptsPerDay = attemptsStr.toInt();
+    c.numDays = constrain((int)numDaysStr.toInt(), 1, MAX_DAYS);
+    c.attemptsPerDay = constrain((int)attemptsStr.toInt(), 1, MAX_ATTEMPTS_PER_DAY);
     strlcpy(c.status, status.c_str(), sizeof(c.status));
     c.currentDay = currentDayStr.toInt();
     if (c.id >= g_nextCompetitionId) g_nextCompetitionId = c.id + 1;
@@ -223,6 +245,7 @@ static void saveCompetitionsFile() {
 
 static void loadLinksFile() {
   g_linkCount = 0;
+  storageRecoverTmp("/vinculos.csv");
   if (!storageIsOk() || !LittleFS.exists("/vinculos.csv")) return;
 
   File f = LittleFS.open("/vinculos.csv", FILE_READ);
@@ -267,6 +290,7 @@ static void saveLinksFile() {
 static void loadTeamsFile() {
   g_teamCount = 0;
   g_nextTeamId = 1;
+  storageRecoverTmp("/equipes.csv");
   if (!storageIsOk() || !LittleFS.exists("/equipes.csv")) return;
 
   File f = LittleFS.open("/equipes.csv", FILE_READ);
@@ -310,7 +334,7 @@ static void saveTeamsFile() {
 }
 
 int teamCreate(const char* name) {
-  if (!name || name[0] == '\0') return -1;
+  if (!nameIsValid(name)) return -4;
   for (int i = 0; i < g_teamCount; i++) {
     if (strcasecmp(g_teams[i].name, name) == 0) return -2;
   }
@@ -335,12 +359,6 @@ const Team* teamById(int id) {
     if (g_teams[i].id == id) return &g_teams[i];
   }
   return nullptr;
-}
-
-// Aspas duplas quebrariam o JSON montado à mão em cloud_sync.cpp e
-// storage.cpp (que assumem nomes sem aspas) - recusadas na edição.
-static bool nameIsValid(const char* name) {
-  return name && name[0] != '\0' && strchr(name, '"') == nullptr;
 }
 
 int teamRename(int id, const char* name) {
@@ -420,7 +438,7 @@ void dataStoreInit() {
 // ------------------- Participantes -------------------
 
 int participantCreate(const char* name, const char* externalCode, int teamId) {
-  if (!name || name[0] == '\0') return -1;
+  if (!nameIsValid(name) || !codeIsValid(externalCode)) return -4;
   for (int i = 0; i < g_participantCount; i++) {
     if (g_participants[i].teamId == teamId && strcasecmp(g_participants[i].name, name) == 0) return -2;
   }
@@ -439,7 +457,7 @@ int participantCreate(const char* name, const char* externalCode, int teamId) {
 }
 
 int participantUpdate(int id, const char* name, const char* externalCode, int teamId) {
-  if (!nameIsValid(name)) return -4;
+  if (!nameIsValid(name) || !codeIsValid(externalCode)) return -4;
   if (!teamById(teamId)) return -3;
   Participant* target = nullptr;
   for (int i = 0; i < g_participantCount; i++) {
@@ -500,9 +518,9 @@ bool participantDelete(int id) {
 // ------------------- Competições -------------------
 
 int competitionCreate(const char* name, int numDays, int attemptsPerDay) {
-  if (g_competitionCount >= MAX_COMPETITIONS || !name || name[0] == '\0') return -1;
-  if (numDays < 1) numDays = 1;
-  if (attemptsPerDay < 1) attemptsPerDay = 1;
+  if (!nameIsValid(name)) return -4;
+  if (!sizeIsValid(numDays, attemptsPerDay)) return -3;
+  if (g_competitionCount >= MAX_COMPETITIONS) return -1;
 
   Competition &c = g_competitions[g_competitionCount++];
   c.id = g_nextCompetitionId++;
@@ -538,6 +556,7 @@ const Competition* competitionById(int id) {
 }
 
 int competitionUpdate(int id, int numDays, int attemptsPerDay) {
+  if (!sizeIsValid(numDays, attemptsPerDay)) return -3; // antes de varrer qualquer dia
   for (int i = 0; i < g_competitionCount; i++) {
     if (g_competitions[i].id != id) continue;
     Competition &c = g_competitions[i];
@@ -547,8 +566,6 @@ int competitionUpdate(int id, int numDays, int attemptsPerDay) {
       if (storageReadDayRuns(c.slug, day, dayRuns, MAX_RUNS_PER_DAY) > 0) return -2;
     }
 
-    if (numDays < 1) numDays = 1;
-    if (attemptsPerDay < 1) attemptsPerDay = 1;
     c.numDays = numDays;
     c.attemptsPerDay = attemptsPerDay;
     saveCompetitionsFile();
@@ -645,7 +662,7 @@ void rosterImport(const RosterImportRow* rows, int n, int8_t* outStatus, RosterI
   for (int r = 0; r < n; r++) {
     const char* teamName = rows[r].team ? rows[r].team : "";
     const char* robotName = rows[r].name ? rows[r].name : "";
-    if (!nameIsValid(teamName) || !nameIsValid(robotName)) {
+    if (!nameIsValid(teamName) || !nameIsValid(robotName) || !codeIsValid(rows[r].code)) {
       outStatus[r] = ROSTER_INVALID;
       outSummary.failed++;
       continue;
@@ -877,6 +894,7 @@ int competitionDayStatus(int competitionId, DayStatusParticipant* outRows, int m
 void maybeAdvanceAttempt(int competitionId, int participantId, int day) {
   const Competition* comp = competitionById(competitionId);
   if (!comp) return;
+  if (raceControlIsArmed()) return; // já tem robô selecionado: não troca por cima dele
 
   StoredRun* rows = storageDayRunsScratch(); // buffer compartilhado (ver storage.h)
   int n = storageReadDayRuns(comp->slug, day, rows, MAX_RUNS_PER_DAY);

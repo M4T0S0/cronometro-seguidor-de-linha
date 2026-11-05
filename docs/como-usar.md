@@ -20,7 +20,7 @@ O cadastro vale para todas as competições. Se escrever um nome errado, dá par
 
 ### Criar a competição
 
-Em **Nova competição**, escolha o nome, quantos dias e quantas tomadas cada robô tem por dia. Depois, em **Inscritos**, adicione os robôs que vão correr. Dias e tomadas só podem mudar antes da primeira corrida; o nome pode mudar a qualquer hora.
+Em **Nova competição**, escolha o nome, quantos dias e quantas tomadas cada robô tem por dia (de 1 a 10 cada). Depois, em **Inscritos**, adicione os robôs que vão correr. Dias e tomadas só podem mudar antes da primeira corrida; o nome pode mudar a qualquer hora.
 
 ### Senha do juiz (recomendado)
 

@@ -98,7 +98,9 @@ static Prova prova(int dias = 1, int tomadas = 3) {
 // ------------------------------------------------------------------
 TESTE(cadastro_sobrevive, "cadastro continua igual depois de desligar e ligar") {
   int eq = teamCreate("Equipe Falcão");
-  int r = participantCreate("Raio, o \"veloz\"", "R1", eq);
+  int r = participantCreate("Raio, o veloz", "R1", eq);
+  CONFERE(r > 0);
+  if (r <= 0) return;
   int c = competitionCreate("Copa Pinhão 2026", 2, 3);
   linkCreate(c, r);
 
@@ -106,7 +108,7 @@ TESTE(cadastro_sobrevive, "cadastro continua igual depois de desligar e ligar") 
 
   CONFERE(teamCount() == 1 && participantCount() == 1 && competitionCount() == 1);
   CONFERE(std::strcmp(teamById(eq)->name, "Equipe Falcão") == 0);
-  CONFERE(std::strcmp(participantById(r)->name, "Raio, o \"veloz\"") == 0);  // vírgula e aspas no CSV
+  CONFERE(std::strcmp(participantById(r)->name, "Raio, o veloz") == 0);  // vírgula dentro do CSV
   CONFERE(std::strcmp(participantById(r)->externalCode, "R1") == 0);
   CONFERE(std::strcmp(competitionById(c)->name, "Copa Pinhão 2026") == 0);
   CONFERE(competitionById(c)->numDays == 2 && competitionById(c)->attemptsPerDay == 3);
@@ -131,6 +133,80 @@ TESTE(nomes_recusados, "nomes vazios, repetidos ou com aspas são recusados onde
   CONFERE(participantCreate("raio", "", eq) == -2);
   CONFERE(teamRename(eq, "Com \"aspas\"") == -4);
   CONFERE(competitionRename(competitionCreate("Prova", 1, 1), "") == -4);
+  // aspas e quebra de linha recusadas também ao cadastrar (auditoria de segurança)
+  CONFERE(teamCreate("Com \"aspas\"") == -4);
+  CONFERE(teamCreate("Duas\nlinhas") == -4);
+  CONFERE(participantCreate("Robo\n2,Impostor,,1", "", eq) == -4);
+  CONFERE(participantCreate("Robo", "C\r1", eq) == -4);
+  CONFERE(competitionCreate("Prova\tX", 1, 1) == -4);
+}
+
+TESTE(nome_com_quebra_de_linha, "quebra de linha num nome importado não corrompe o cadastro") {
+  int eq = teamCreate("Equipe");
+  int real = participantCreate("Falcão", "", eq);
+  RosterImportRow linhas[] = { {"Equipe", "Robo\n2,Impostor,,1", ""}, {"Equipe", "Normal", "C\n9"} };
+  int8_t st[2];
+  RosterImportSummary s;
+  rosterImport(linhas, 2, st, s);
+  CONFERE(st[0] == ROSTER_INVALID && st[1] == ROSTER_INVALID);
+  dataStoreInit();
+  CONFERE(participantCount() == 1);
+  CONFERE(participantById(real) && std::strcmp(participantById(real)->name, "Falcão") == 0);
+}
+
+TESTE(limite_de_dias, "dias e tomadas fora de 1 a 10 são recusados (número enorme travava o ranking)") {
+  CONFERE(competitionCreate("Max", 2147483647, 1) == -3);
+  CONFERE(competitionCreate("Zero", 0, 3) == -3);
+  CONFERE(competitionCreate("Tomadas", 1, 11) == -3);
+  int c = competitionCreate("Ok", 10, 10);
+  CONFERE(c > 0);
+  CONFERE(competitionUpdate(c, 2147483647, 1) == -3);
+  CONFERE(competitionById(c)->numDays == 10);
+  // competição gravada por uma versão antiga com um valor absurdo: limitada ao carregar
+  std::string& csv = fakeFiles()["/competicoes.csv"];
+  size_t pos = csv.find(",10,10,");  // dias e tomadas ficam sem aspas no CSV
+  CONFERE(pos != std::string::npos);
+  if (pos != std::string::npos) csv.insert(pos + 1, "999999");  // dias = 99999910
+  dataStoreInit();
+  CONFERE(competitionById(c)->numDays <= MAX_DAYS);
+  RankingRow rows[MAX_RANKING_ROWS];
+  computeRanking(c, rows, MAX_RANKING_ROWS);  // termina (antes ficava preso)
+}
+
+TESTE(queda_de_energia, "queda de energia no meio de uma gravação não apaga o cadastro") {
+  int eq = teamCreate("Equipe Falcão");
+  int r = participantCreate("Raio", "", eq);
+  // a energia caiu depois de apagar o original e antes de renomear o .tmp
+  fakeFiles()["/participantes.csv.tmp"] = fakeFiles()["/participantes.csv"];
+  fakeFiles().erase("/participantes.csv");
+  dataStoreInit();
+  CONFERE(participantById(r) && std::strcmp(participantById(r)->name, "Raio") == 0);
+  CONFERE(!fakeFiles().count("/participantes.csv.tmp"));
+
+  // a energia caiu no meio da escrita do .tmp: o original continua valendo
+  fakeFiles()["/equipes.csv.tmp"] = "ID,No";
+  dataStoreInit();
+  CONFERE(teamById(eq) && std::strcmp(teamById(eq)->name, "Equipe Falcão") == 0);
+  CONFERE(!fakeFiles().count("/equipes.csv.tmp"));
+}
+
+TESTE(queda_de_energia_corridas, "queda de energia ao regravar as corridas do dia não as apaga") {
+  Prova p = prova();
+  corrida(p.comp, p.a, 1, 1, "valid", 11.0);
+  std::string arq = std::string("/") + competitionById(p.comp)->slug + "/Dia_1/resultados.jsonl";
+  CONFERE(fakeFiles().count(arq));
+  fakeFiles()[arq + ".tmp"] = fakeFiles()[arq];
+  fakeFiles().erase(arq);
+  StoredRun* rows = storageDayRunsScratch();
+  CONFERE(storageReadDayRuns(competitionById(p.comp)->slug, 1, rows, MAX_RUNS_PER_DAY) == 1);
+}
+
+TESTE(nao_troca_robo_selecionado, "fim de tomada de um robô não troca outro robô já selecionado") {
+  Prova p = prova(1, 3);
+  corrida(p.comp, p.a, 1, 1, "valid", 11.0);
+  raceControlArm(p.comp, p.b, 1, 1);         // outro celular já escolheu o próximo robô
+  maybeAdvanceAttempt(p.comp, p.a, 1);       // validação do anterior chega depois
+  CONFERE(raceControlIsArmed() && raceControlParticipantId() == p.b);
 }
 
 TESTE(contagem_de_tomadas, "tomada repetida não conta; inválida e não completou contam") {

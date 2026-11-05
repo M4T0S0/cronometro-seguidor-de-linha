@@ -7,3 +7,10 @@ __pycache__/
 *.pyc
 .claude/
 .impeccable/
+
+# saída da auditoria de segurança (fora do controle de versão)
+.security-audit/
+
+# skills instaladas por mim no projeto (não fazem parte do cronômetro)
+.agents/
+skills-lock.json
